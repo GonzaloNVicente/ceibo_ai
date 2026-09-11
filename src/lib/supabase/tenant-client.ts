@@ -75,7 +75,7 @@ export function createTenantScopedClient(supabaseClient: any): TenantAnalyticsCl
       this.empresaId = session.perfil.empresa_id;
 
       const { data, error } = await supabaseClient
-        .from('chat_analytics')
+        .from('chat_analytics_daily')
         .select('*')
         .eq('empresa_id', session.perfil.empresa_id)
         .order('date', { ascending: false })

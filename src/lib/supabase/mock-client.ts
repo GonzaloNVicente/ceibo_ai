@@ -245,7 +245,7 @@ export function createMockSupabaseEngine(
             }));
           } else if (table === 'empresas') {
             rows = Object.values(MOCK_TENANTS);
-          } else if (table === 'chat_analytics') {
+          } else if (table === 'chat_analytics_daily') {
             rows = [...customAnalytics];
           } else {
             return resolve({ data: null, error: { message: `Table '${table}' not found` } });
@@ -257,7 +257,7 @@ export function createMockSupabaseEngine(
           if (!userEmpresaId) {
             rows = [];
           } else {
-            if (table === 'chat_analytics') {
+            if (table === 'chat_analytics_daily') {
               rows = rows.filter((r) => r.empresa_id === userEmpresaId);
             } else if (table === 'empresas') {
               rows = rows.filter((r) => r.id === userEmpresaId);

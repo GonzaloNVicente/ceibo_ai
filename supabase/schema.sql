@@ -48,18 +48,32 @@ COMMENT ON TABLE public.perfiles IS 'User profiles mapped to auth users and scop
 -- 3. Table: chat_analytics (WhatsApp Conversations & Performance Metrics)
 -- -----------------------------------------------------------------------------
 CREATE TABLE public.chat_analytics (
-    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    empresa_id UUID NOT NULL REFERENCES public.empresas(id) ON DELETE CASCADE,
-    date DATE NOT NULL,
-    resueltas_ia INT NOT NULL DEFAULT 0 CHECK (resueltas_ia >= 0),
-    derivadas_humano INT NOT NULL DEFAULT 0 CHECK (derivadas_humano >= 0),
-    total_consultas INT NOT NULL DEFAULT 0 CHECK (total_consultas >= 0),
-    horas_ahorradas NUMERIC(10, 1) NOT NULL DEFAULT 0.0 CHECK (horas_ahorradas >= 0.0),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
-    CONSTRAINT unique_empresa_analytics_date UNIQUE (empresa_id, date)
+    customer_phone TEXT,
+    query_type TEXT,
+    query_text TEXT,
+    related_product_id TEXT,
+    bot_response TEXT,
+    is_escalated BOOLEAN NOT NULL DEFAULT false,
+    resolution_status TEXT,
+    customer_name TEXT,
+    empresa_id UUID NOT NULL REFERENCES public.empresas(id) ON DELETE CASCADE
 );
 
-COMMENT ON TABLE public.chat_analytics IS 'Daily aggregated WhatsApp interaction metrics per tenant.';
+COMMENT ON TABLE public.chat_analytics IS 'Individual WhatsApp interaction metrics per tenant.';
+
+-- View for daily aggregation
+CREATE OR REPLACE VIEW public.chat_analytics_daily AS
+SELECT
+    empresa_id,
+    DATE(created_at) as date,
+    COUNT(*) FILTER (WHERE is_escalated = false) as resueltas_ia,
+    COUNT(*) FILTER (WHERE is_escalated = true) as derivadas_humano,
+    COUNT(*) as total_consultas,
+    (COUNT(*) FILTER (WHERE is_escalated = false) * 0.2)::NUMERIC(10, 1) as horas_ahorradas
+FROM public.chat_analytics
+GROUP BY empresa_id, DATE(created_at);
 
 -- -----------------------------------------------------------------------------
 -- 4. Indexes for Performance & Scoped Queries
@@ -67,7 +81,7 @@ COMMENT ON TABLE public.chat_analytics IS 'Daily aggregated WhatsApp interaction
 CREATE INDEX idx_empresas_slug ON public.empresas(slug);
 CREATE INDEX idx_perfiles_empresa_id ON public.perfiles(empresa_id);
 CREATE INDEX idx_perfiles_email ON public.perfiles(email);
-CREATE INDEX idx_chat_analytics_empresa_date ON public.chat_analytics(empresa_id, date ASC);
+CREATE INDEX idx_chat_analytics_empresa_created_at ON public.chat_analytics(empresa_id, created_at ASC);
 
 -- -----------------------------------------------------------------------------
 -- 5. Helper Function: current_user_empresa_id()
