@@ -23,8 +23,8 @@ export function MetricCard({
   trendText,
   trendPositive = true,
   subtext,
-  iconColor = 'text-emerald-600',
-  iconBgColor = 'bg-emerald-50',
+  iconColor = 'text-brand-600',
+  iconBgColor = 'bg-brand-50',
   valueColor = 'text-slate-900',
   className,
 }: MetricCardProps) {
@@ -46,7 +46,7 @@ export function MetricCard({
           <div
             className={cn(
               'flex items-center gap-1.5 mt-1 text-xs font-medium',
-              trendPositive ? 'text-emerald-600' : 'text-slate-600'
+              trendPositive ? 'text-brand-600' : 'text-slate-600'
             )}
           >
             {trendPositive ? (

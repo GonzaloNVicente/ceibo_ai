@@ -1,14 +1,21 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Manrope, Sora } from 'next/font/google';
 import './globals.css';
 import { AppShell } from '@/components/layout/app-shell';
 import { AuthProvider } from '@/contexts/auth-context';
 
-const inter = Inter({
+const manrope = Manrope({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-inter',
+  variable: '--font-sans',
   fallback: ['system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+});
+
+const sora = Sora({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-display',
+  fallback: ['ui-sans-serif', 'system-ui', 'sans-serif'],
 });
 
 export const metadata: Metadata = {
@@ -23,8 +30,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className={`${inter.variable} h-full bg-slate-50`}>
-      <body className="min-h-full font-sans bg-slate-50 text-slate-900 antialiased">
+    <html lang="es" className={`${manrope.variable} ${sora.variable} h-full bg-background text-foreground`}>
+      <body className="min-h-full font-sans bg-background text-foreground antialiased" style={{ fontFamily: 'var(--font-sans), system-ui, sans-serif' }}>
         <AuthProvider>
           <AppShell>{children}</AppShell>
         </AuthProvider>

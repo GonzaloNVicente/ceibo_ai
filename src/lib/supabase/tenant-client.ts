@@ -5,11 +5,14 @@
  * and provides high-level aggregation methods for the main dashboard.
  */
 
+import { SupabaseClient } from '@supabase/supabase-js';
 import {
   TenantAnalyticsClient,
   UserTenantSession,
   ChatAnalytics,
   SummaryMetrics,
+  ChatAnalyticsRaw,
+  ChatMessage,
 } from './types';
 import { calculateSummaryMetrics, MOCK_TENANTS } from './mock-data';
 
@@ -92,6 +95,46 @@ export function createTenantScopedClient(supabaseClient: any): TenantAnalyticsCl
     async getSummaryMetrics(): Promise<SummaryMetrics> {
       const rows = await this.getRecent30Days();
       return calculateSummaryMetrics(rows);
+    },
+
+    async getLeads(): Promise<ChatAnalyticsRaw[]> {
+      const session = await this.getSession();
+      if (!session || !session.perfil?.empresa_id) {
+        throw new Error('UNAUTHORIZED: No active tenant session');
+      }
+
+      const { data, error } = await supabaseClient
+        .from('chat_analytics')
+        .select('*')
+        .eq('empresa_id', session.perfil.empresa_id)
+
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return (data as ChatAnalyticsRaw[]) || [];
+    },
+
+    async getChatMessages(sessionId: string): Promise<ChatMessage[]> {
+      const session = await this.getSession();
+      if (!session || !session.perfil?.empresa_id) {
+        throw new Error('UNAUTHORIZED: No active tenant session');
+      }
+
+      const { data, error } = await supabaseClient
+        .from('n8n_chat_histories')
+        .select('*')
+        .eq('empresa_id', session.perfil.empresa_id)
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return (data as ChatMessage[]) || [];
     },
   };
 }

@@ -2,16 +2,9 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Building2,
-  ShieldCheck,
-  LogOut,
-  Bell,
-  Smartphone,
-} from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { MessageCircleMore, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
+import { BrandMark } from './sidebar';
 
 interface NavbarProps {
   onMenuToggle?: () => void;
@@ -23,9 +16,17 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
 
   const tenantName = empresa?.name || 'Ceibo AI Tech Solutions';
   const tenantPlan = (empresa?.plan || 'enterprise').toUpperCase();
-  const userName = perfil?.full_name || 'Sofía Rodríguez';
-  const userEmail = user?.email || 'admin@ceibo.ai';
-  const empresaId = perfil?.empresa_id || empresa?.id || '11111111-1111-4111-a111-111111111111';
+  const userName = perfil?.full_name || 'Gonzalo Vicente';
+  const userEmail = user?.email || 'gonzalo@ceibo.ai';
+
+  const userInitials =
+    userName
+      .split(' ')
+      .filter(Boolean)
+      .map((n) => n[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'GV';
 
   const handleSignOut = async () => {
     try {
@@ -37,82 +38,60 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
   };
 
   return (
-    <header className="h-16 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs">
-      {/* Left: Tenant Selector / Display */}
-      <div className="flex items-center gap-4">
-        {onMenuToggle && (
+    <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-md">
+      <div className="flex min-h-16 items-center gap-3 px-4 sm:px-6 xl:px-8">
+        {/* Mobile Brand Fallback & Menu Toggle */}
+        <div className="flex items-center gap-2 lg:hidden">
           <button
+            type="button"
             onClick={onMenuToggle}
-            className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100"
-            aria-label="Abrir menú"
+            className="flex items-center gap-2 rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+            aria-label="Abrir menú de navegación"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            <BrandMark />
+            <span className="hidden font-display text-sm font-bold sm:block">
+              Ceibo AI
+            </span>
           </button>
-        )}
-
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
-            <Building2 className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-slate-900 text-sm">{tenantName}</span>
-              <Badge variant="success" className="text-[10px] py-0 px-2 bg-emerald-50 text-emerald-700 border-emerald-200">
-                <ShieldCheck className="w-3 h-3 mr-1" />
-                {tenantPlan}
-              </Badge>
-            </div>
-            <p className="text-[11px] text-slate-500 font-mono">ID: {empresaId.slice(0, 13)}...</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Right: Status & User Nav */}
-      <div className="flex items-center gap-3 md:gap-5">
-        {/* WhatsApp Channel Indicator */}
-        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-xs text-slate-600">
-          <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Canal: <strong className="font-medium text-slate-800">+54 9 11 5555-0199</strong></span>
-          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
         </div>
 
-        {/* Notifications Icon */}
-        <button
-          className="relative p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-          title="Notificaciones"
-        >
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full" />
-        </button>
-
-        {/* User Profile Navigation */}
-        <div className="flex items-center gap-3 pl-3 border-l border-slate-200">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-white flex items-center justify-center text-xs font-semibold shadow-inner">
-              {userName
-                .split(' ')
-                .map((n) => n[0])
-                .join('')
-                .slice(0, 2)}
-            </div>
-            <div className="hidden sm:flex flex-col text-left">
-              <span className="text-xs font-semibold text-slate-900 leading-tight">{userName}</span>
-              <span className="text-[11px] text-slate-500">{userEmail}</span>
-            </div>
+        {/* Tenant Identity & WhatsApp Status */}
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="truncate text-sm font-bold">{tenantName}</p>
+            <span className="hidden rounded bg-ceibo-soft px-2 py-1 text-[10px] font-bold text-ceibo sm:inline">
+              {tenantPlan}
+            </span>
           </div>
+          <div className="mt-0.5 hidden items-center gap-1.5 text-[11px] text-muted-foreground sm:flex">
+            <MessageCircleMore className="size-3.5 text-success" />
+            <span>+54 9 11 5482-0916</span>
+            <span className="size-1 rounded-full bg-border" />
+            <span className="font-semibold text-success">Conectado</span>
+          </div>
+        </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleSignOut}
-            className="h-8 px-2.5 text-slate-600 hover:text-red-600 hover:bg-red-50 text-xs flex items-center gap-1.5 cursor-pointer"
-            title="Cerrar sesión"
+        {/* User Profile & Action Menu */}
+        <div className="ml-auto flex items-center gap-3 border-l border-border pl-3">
+          <div className="hidden text-right md:block">
+            <p className="text-xs font-bold">{userName}</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">{userEmail}</p>
+          </div>
+          <div
+            className="grid size-9 place-items-center rounded-md bg-accent font-display text-xs font-bold text-accent-foreground select-none"
+            title={`${userName} (${userEmail})`}
           >
-            <LogOut className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Salir</span>
-          </Button>
+            {userInitials}
+          </div>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="hidden text-muted-foreground hover:text-foreground transition-colors sm:block"
+            title="Cerrar sesión"
+            aria-label="Cerrar sesión"
+          >
+            <ChevronDown className="size-4" />
+          </button>
         </div>
       </div>
     </header>

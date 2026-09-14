@@ -21,8 +21,8 @@ export function MetricsGrid({ metrics }: MetricsGridProps) {
         icon={MessageSquare}
         trendText="+18.4% vs mes anterior"
         subtext="Últimos 30 días de actividad WhatsApp"
-        iconColor="text-emerald-600"
-        iconBgColor="bg-emerald-50"
+        iconColor="text-brand-600"
+        iconBgColor="bg-brand-50"
       />
 
       {/* 2. Horas de Venta Ahorradas */}
@@ -43,9 +43,9 @@ export function MetricsGrid({ metrics }: MetricsGridProps) {
         icon={Sparkles}
         trendText={`${metrics.totalIA.toLocaleString()} resueltas por IA`}
         subtext="Sin intervención de asesor humano"
-        iconColor="text-emerald-600"
-        iconBgColor="bg-emerald-50"
-        valueColor="text-emerald-700"
+        iconColor="text-brand-600"
+        iconBgColor="bg-brand-50"
+        valueColor="text-brand-700"
       />
 
       {/* 4. Derivadas a Humano */}

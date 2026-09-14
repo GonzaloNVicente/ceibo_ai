@@ -125,3 +125,27 @@ CREATE POLICY chat_analytics_tenant_isolation ON public.chat_analytics
     FOR ALL
     USING (empresa_id = public.current_user_empresa_id())
     WITH CHECK (empresa_id = public.current_user_empresa_id());
+
+-- Tabla de Historial de Chats de n8n
+CREATE TABLE public.n8n_chat_histories (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    session_id TEXT NOT NULL, -- Logical session ID, usually references chat_analytics ID
+    empresa_id UUID NOT NULL REFERENCES public.empresas(id) ON DELETE CASCADE,
+    message_text TEXT NOT NULL,
+    sender_type TEXT NOT NULL CHECK (sender_type IN ('user', 'bot', 'human_agent')),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX n8n_chat_histories_session_idx ON public.n8n_chat_histories (session_id);
+CREATE INDEX n8n_chat_histories_empresa_idx ON public.n8n_chat_histories (empresa_id);
+CREATE INDEX n8n_chat_histories_created_at_idx ON public.n8n_chat_histories (created_at);
+
+-- Enable RLS
+ALTER TABLE public.n8n_chat_histories ENABLE ROW LEVEL SECURITY;
+
+-- Policy: n8n_chat_histories
+CREATE POLICY n8n_chat_histories_tenant_isolation ON public.n8n_chat_histories
+    FOR ALL
+    USING (empresa_id = public.current_user_empresa_id())
+    WITH CHECK (empresa_id = public.current_user_empresa_id());

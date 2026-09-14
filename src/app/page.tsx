@@ -1,172 +1,112 @@
-'use client';
-
-import React, { useEffect, useState, useCallback } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import {
-  MessageSquare,
-  Sparkles,
-  ArrowRight,
-  ShieldCheck,
-  RefreshCw,
-  Loader2,
-} from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { MetricsGrid } from '@/components/dashboard/metrics-grid';
-import { AnalyticsChart } from '@/components/dashboard/analytics-chart';
-import { useAuth } from '@/contexts/auth-context';
-import { createClient } from '@/lib/supabase/client';
-import { createTenantScopedClient } from '@/lib/supabase/tenant-client';
-import { ChatAnalytics, SummaryMetrics } from '@/lib/supabase/types';
-import { calculateSummaryMetrics } from '@/lib/supabase/mock-data';
+import { ArrowRight, Bot, ShieldCheck, Zap, BarChart3, MessageSquareText } from 'lucide-react';
+import { BrandMark } from '@/components/layout/sidebar';
 
-export default function DashboardPage() {
-  const router = useRouter();
-  const { user, empresa, perfil, loading: authLoading } = useAuth();
-
-  const [analytics, setAnalytics] = useState<ChatAnalytics[]>([]);
-  const [metrics, setMetrics] = useState<SummaryMetrics>({
-    totalConsultas: 0,
-    totalIA: 0,
-    totalHuman: 0,
-    horasAhorradas: 0,
-    tasaResolucionIA: 0,
-  });
-  const [loadingData, setLoadingData] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadDashboardData = useCallback(async () => {
-    setLoadingData(true);
-    setError(null);
-    try {
-      const supabase = createClient();
-      const tenantClient = createTenantScopedClient(supabase);
-      const rows = await tenantClient.getRecent30Days();
-      setAnalytics(rows);
-      setMetrics(calculateSummaryMetrics(rows));
-    } catch (err: any) {
-      console.error('Error fetching dashboard analytics:', err);
-      if (err?.message?.includes('UNAUTHORIZED')) {
-        router.push('/login');
-        return;
-      }
-      setError(err?.message || 'Error al cargar métricas de WhatsApp.');
-    } finally {
-      setLoadingData(false);
-    }
-  }, [router]);
-
-  useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        router.push('/login');
-      } else {
-        loadDashboardData();
-      }
-    }
-  }, [authLoading, user, empresa?.id, loadDashboardData, router]);
-
-  if (authLoading || (loadingData && analytics.length === 0)) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 text-slate-400">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-        <p className="text-sm font-medium text-slate-600">
-          Cargando métricas y análisis de WhatsApp...
-        </p>
-      </div>
-    );
-  }
-
-  const tenantName = empresa?.name || 'Ceibo AI Tech Solutions';
-  const tenantPlan = (empresa?.plan || 'enterprise').toUpperCase();
-
+export default function LandingPage() {
   return (
-    <div className="space-y-8">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Dashboard de Rendimiento WhatsApp
-            </h1>
-            <Badge variant="success" className="inline-flex bg-emerald-100 text-emerald-800 text-xs">
-              En Vivo
-            </Badge>
-          </div>
-          <p className="text-sm text-slate-500 mt-1">
-            Métricas comerciales en tiempo real para <strong>{tenantName}</strong> ({tenantPlan}).
-          </p>
-        </div>
-
+    <div className="min-h-screen bg-background text-foreground selection:bg-ceibo/20 selection:text-ceibo">
+      {/* Navbar */}
+      <nav className="flex items-center justify-between px-6 py-4 lg:px-12 border-b border-border/40 bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadDashboardData}
-            disabled={loadingData}
-            className="gap-1.5 text-xs text-slate-600"
-            title="Refrescar datos"
+          <BrandMark />
+          <span className="font-display text-xl font-bold tracking-tight text-sidebar-primary">Ceibo AI</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <Link href="/login" className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
+            Iniciar Sesión
+          </Link>
+          <Link 
+            href="/dashboard" 
+            className="flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-action hover:translate-y-[-2px] transition-all"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loadingData ? 'animate-spin' : ''}`} />
-            <span>Actualizar</span>
-          </Button>
-
-          <Link href="/chats">
-            <Button variant="outline" size="sm" className="gap-2">
-              <MessageSquare className="w-4 h-4 text-slate-600" />
-              <span>Ver Chats</span>
-            </Button>
-          </Link>
-
-          <Link href="/documents">
-            <Button variant="brand" size="sm" className="gap-2">
-              <Sparkles className="w-4 h-4" />
-              <span>Entrenar Asistente</span>
-            </Button>
+            Ver Demo <ArrowRight className="size-4" />
           </Link>
         </div>
-      </div>
+      </nav>
 
-      {error && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm">
-          {error}
-        </div>
-      )}
-
-      {/* 4 Metric KPI Cards */}
-      <MetricsGrid metrics={metrics} />
-
-      {/* 30-Day Comparative Chart */}
-      <AnalyticsChart analytics={analytics} />
-
-      {/* Multi-Tenant Security & Context Footer */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-slate-100 rounded-lg text-slate-700">
-            <ShieldCheck className="w-5 h-5 text-emerald-600" />
+      {/* Hero Section */}
+      <section className="relative overflow-hidden pt-24 pb-32 lg:pt-36 lg:pb-40">
+        {/* Abstract Background Glows */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-ceibo/20 rounded-full blur-[120px] opacity-50 -z-10 pointer-events-none" />
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-success/15 rounded-full blur-[100px] opacity-40 -z-10 pointer-events-none" />
+        
+        <div className="mx-auto max-w-5xl px-6 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-success/30 bg-success/10 px-3 py-1.5 text-sm font-semibold text-success mb-8">
+            <span className="relative flex size-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+              <span className="relative inline-flex rounded-full size-2.5 bg-success"></span>
+            </span>
+            Asistentes entrenados y operativos 24/7
           </div>
-          <div>
-            <h4 className="font-semibold text-slate-900 text-sm">
-              Seguridad Multi-Tenant Activa ({tenantName})
-            </h4>
-            <p className="text-xs text-slate-500">
-              Todas las consultas y registros están aislados criptográficamente para la empresa{' '}
-              <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700 font-mono">
-                {perfil?.empresa_id || empresa?.id}
-              </code>
-              .
-            </p>
+          
+          <h1 className="font-display text-5xl font-extrabold tracking-tight sm:text-7xl lg:text-[80px] leading-[1.1] mb-8">
+            Revolucioná tus ventas por WhatsApp con <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-ceibo to-success">Inteligencia Artificial</span>
+          </h1>
+          
+          <p className="mx-auto max-w-2xl text-lg sm:text-xl text-muted-foreground mb-12 leading-relaxed">
+            Ceibo AI automatiza el primer contacto, califica prospectos, responde consultas frecuentes y escala leads comerciales listos para cerrar, liberando el tiempo de tu equipo de ventas.
+          </p>
+          
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link 
+              href="/dashboard"
+              className="flex items-center gap-2 rounded-full bg-foreground px-8 py-4 text-base font-bold text-background shadow-lg hover:bg-foreground/90 transition-all hover:scale-105"
+            >
+              Explorar el Dashboard <ArrowRight className="size-5" />
+            </Link>
+            <Link 
+              href="/login"
+              className="flex items-center gap-2 rounded-full border border-border bg-card px-8 py-4 text-base font-bold text-foreground shadow-sm hover:bg-accent/10 transition-colors"
+            >
+              Contactar Ventas
+            </Link>
           </div>
         </div>
+      </section>
 
-        <Link href="/settings">
-          <Button variant="outline" size="sm" className="gap-2 text-xs">
-            <span>Ver detalles del tenant</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Button>
-        </Link>
-      </div>
+      {/* Features Section */}
+      <section className="py-24 bg-accent/5 border-t border-border/50">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="text-center mb-16">
+            <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mb-4">Construido para escalar B2B</h2>
+            <p className="text-muted-foreground text-lg max-w-xl mx-auto">Nuestra plataforma te da el control total sobre la operación automatizada de tu empresa.</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="bg-card border border-border p-8 rounded-2xl shadow-panel hover:border-ceibo/30 transition-colors">
+              <div className="size-12 rounded-lg bg-ceibo/10 text-ceibo flex items-center justify-center mb-6">
+                <MessageSquareText className="size-6" />
+              </div>
+              <h3 className="text-xl font-bold font-display mb-3">Respuestas Contextuales</h3>
+              <p className="text-muted-foreground leading-relaxed">El asistente entiende la intención del cliente y responde basándose en tu propia base de conocimiento institucional.</p>
+            </div>
+            
+            <div className="bg-card border border-border p-8 rounded-2xl shadow-panel hover:border-success/30 transition-colors">
+              <div className="size-12 rounded-lg bg-success/10 text-success flex items-center justify-center mb-6">
+                <BarChart3 className="size-6" />
+              </div>
+              <h3 className="text-xl font-bold font-display mb-3">Métricas en Tiempo Real</h3>
+              <p className="text-muted-foreground leading-relaxed">Visualizá cuántas horas de trabajo ahorrás y qué porcentaje de consultas resuelve la IA sin intervención humana.</p>
+            </div>
+            
+            <div className="bg-card border border-border p-8 rounded-2xl shadow-panel hover:border-primary/30 transition-colors">
+              <div className="size-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-6">
+                <ShieldCheck className="size-6" />
+              </div>
+              <h3 className="text-xl font-bold font-display mb-3">Seguridad Multi-Tenant</h3>
+              <p className="text-muted-foreground leading-relaxed">Tu base de conocimiento y los chats de tus clientes están aislados criptográficamente para tu empresa exclusivamente.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      {/* Footer */}
+      <footer className="border-t border-border py-12 text-center">
+        <p className="text-sm text-muted-foreground">
+          © {new Date().getFullYear()} Ceibo AI Tech Solutions. Desarrollado para el futuro de las ventas.
+        </p>
+      </footer>
     </div>
   );
 }

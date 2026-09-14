@@ -10,8 +10,10 @@ import {
   MOCK_USERS,
   MOCK_ANALYTICS,
   MockUserAccount,
+  MOCK_RAW_ANALYTICS,
+  MOCK_CHAT_MESSAGES,
 } from './mock-data';
-import { Empresa, Perfil, ChatAnalytics } from './types';
+import { Empresa, Perfil, ChatAnalytics, ChatAnalyticsRaw, ChatMessage } from './types';
 
 export interface MockAuthResponse {
   data: {
@@ -81,6 +83,8 @@ export function createMockSupabaseEngine(
 ) {
   let currentUser: MockUserAccount | null = initialUser;
   let customAnalytics: ChatAnalytics[] = [...analyticsDataset];
+  let rawAnalyticsDataset: ChatAnalyticsRaw[] = [...MOCK_RAW_ANALYTICS];
+  let chatMessagesDataset: ChatMessage[] = [...MOCK_CHAT_MESSAGES];
 
   // Auto-restore browser session if available and no initialUser passed
   if (!initialUser && typeof window !== 'undefined') {
@@ -247,6 +251,10 @@ export function createMockSupabaseEngine(
             rows = Object.values(MOCK_TENANTS);
           } else if (table === 'chat_analytics_daily') {
             rows = [...customAnalytics];
+          } else if (table === 'chat_analytics') {
+            rows = [...rawAnalyticsDataset];
+          } else if (table === 'n8n_chat_histories') {
+            rows = [...chatMessagesDataset];
           } else {
             return resolve({ data: null, error: { message: `Table '${table}' not found` } });
           }
@@ -257,7 +265,7 @@ export function createMockSupabaseEngine(
           if (!userEmpresaId) {
             rows = [];
           } else {
-            if (table === 'chat_analytics_daily') {
+            if (table === 'chat_analytics_daily' || table === 'chat_analytics' || table === 'n8n_chat_histories') {
               rows = rows.filter((r) => r.empresa_id === userEmpresaId);
             } else if (table === 'empresas') {
               rows = rows.filter((r) => r.id === userEmpresaId);

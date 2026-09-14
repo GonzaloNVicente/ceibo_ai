@@ -14,9 +14,9 @@ export interface Empresa {
 
 export interface Perfil {
   id: string;
-  empresa_id: string;
-  full_name: string;
-  role: 'admin' | 'member';
+  empresa_id: string; // Foreign key to Empresa
+  full_name: string | null;
+  role: 'admin' | 'agente';
   email: string;
   created_at?: string;
   updated_at?: string;
@@ -24,14 +24,37 @@ export interface Perfil {
 }
 
 export interface ChatAnalytics {
-  id: string;
   empresa_id: string;
   date: string; // ISO-8601 'YYYY-MM-DD'
   resueltas_ia: number;
   derivadas_humano: number;
   total_consultas: number;
   horas_ahorradas: number; // calculated as resueltas_ia * 0.2
-  created_at?: string;
+}
+
+export type ChatAnalyticsDaily = ChatAnalytics;
+
+export interface ChatAnalyticsRaw {
+  id: string;
+  created_at: string;
+  customer_phone: string | null;
+  query_type: string | null;
+  query_text: string;
+  related_product_id: string | null;
+  bot_response: string;
+  is_escalated: boolean;
+  resolution_status: string;
+  customer_name: string | null;
+  empresa_id: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  session_id: string; // References ChatAnalyticsRaw.id
+  empresa_id: string;
+  message_text: string;
+  sender_type: 'user' | 'bot' | 'human_agent';
+  created_at: string;
 }
 
 export interface UserTenantSession {
@@ -65,6 +88,8 @@ export interface TenantAnalyticsClient {
   getSession(): Promise<UserTenantSession | null>;
   getRecent30Days(): Promise<ChatAnalytics[]>;
   getSummaryMetrics(): Promise<SummaryMetrics>;
+  getLeads(): Promise<ChatAnalyticsRaw[]>;
+  getChatMessages(sessionId: string): Promise<ChatMessage[]>;
 }
 
 export interface AuthContextType {

@@ -4,149 +4,112 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard,
+  Gauge,
   Inbox,
-  MessageSquare,
-  FileText,
+  MessageCircleMore,
+  BookOpen,
   Settings,
   Bot,
-  Sparkles,
-  CheckCircle2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 
-interface NavItem {
-  name: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  isComingSoon?: boolean;
+export function BrandMark() {
+  return (
+    <div className="grid size-11 shrink-0 place-items-center rounded-md bg-primary font-display text-lg font-bold text-primary-foreground shadow-action">
+      C
+    </div>
+  );
 }
 
-const navItems: NavItem[] = [
-  {
-    name: 'Dashboard',
-    href: '/',
-    icon: LayoutDashboard,
-  },
-  {
-    name: 'Inbox',
-    href: '/inbox',
-    icon: Inbox,
-    isComingSoon: true,
-  },
-  {
-    name: 'Chats',
-    href: '/chats',
-    icon: MessageSquare,
-    isComingSoon: true,
-  },
-  {
-    name: 'Carga de Documentos',
-    href: '/documents',
-    icon: FileText,
-    isComingSoon: true,
-  },
-  {
-    name: 'Configuración',
-    href: '/settings',
-    icon: Settings,
-    isComingSoon: true,
-  },
+export const navItems = [
+  { label: 'Dashboard', href: '/dashboard', icon: Gauge },
+  { label: 'Inbox', href: '/inbox', icon: Inbox, count: '24' },
+  { label: 'Chats', href: '/chats', icon: MessageCircleMore },
+  { label: 'Base de Conocimiento', href: '/documents', icon: BookOpen },
+  { label: 'Configuración', href: '/settings', icon: Settings },
 ];
 
 interface SidebarProps {
   className?: string;
+  onNavigate?: () => void;
+  isMobile?: boolean;
 }
 
-export function Sidebar({ className }: SidebarProps) {
+export function Sidebar({ className, onNavigate, isMobile }: SidebarProps) {
   const pathname = usePathname();
 
   return (
     <aside
       className={cn(
-        'w-64 border-r border-slate-200 bg-white flex flex-col justify-between shrink-0 h-screen sticky top-0 shadow-sm',
+        isMobile
+          ? 'flex h-full w-[252px] flex-col bg-sidebar text-sidebar-foreground'
+          : 'fixed inset-y-0 left-0 z-30 hidden w-[252px] flex-col bg-sidebar text-sidebar-foreground lg:flex',
         className
       )}
     >
       {/* Brand Header */}
-      <div>
-        <div className="h-16 flex items-center gap-3 px-6 border-b border-slate-100">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
-            <Bot className="w-6 h-6" />
-          </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-slate-900 tracking-tight text-lg">Ceibo AI</span>
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-100" />
-            </div>
-            <span className="text-xs text-slate-500 font-medium">Asistente WhatsApp B2B</span>
-          </div>
+      <div className="flex items-center gap-3 px-6 py-7">
+        <BrandMark />
+        <div>
+          <p className="font-display text-[17px] font-bold leading-none text-sidebar-accent-foreground">
+            Ceibo AI
+          </p>
+          <p className="mt-1 text-[11px] font-medium text-sidebar-foreground/55">
+            Ventas por WhatsApp
+          </p>
         </div>
-
-        {/* Navigation */}
-        <nav className="p-4 space-y-1.5" aria-label="Sidebar Navigation">
-          <div className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-            Módulos
-          </div>
-
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  'group flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
-                  isActive
-                    ? 'bg-emerald-50 text-emerald-800 shadow-sm border border-emerald-100/60'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon
-                    className={cn(
-                      'w-5 h-5 transition-colors',
-                      isActive ? 'text-emerald-600' : 'text-slate-400 group-hover:text-slate-600'
-                    )}
-                  />
-                  <span>{item.name}</span>
-                </div>
-
-                {item.isComingSoon ? (
-                  <Badge
-                    variant="secondary"
-                    className="text-[10px] px-1.5 py-0 font-medium bg-slate-100 text-slate-600 border border-slate-200"
-                  >
-                    Próximamente
-                  </Badge>
-                ) : isActive ? (
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-                ) : null}
-              </Link>
-            );
-          })}
-        </nav>
       </div>
 
-      {/* Footer / Tenant WhatsApp Status */}
-      <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-        <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-emerald-950 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-              Bot WhatsApp
-            </span>
-            <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-700">
-              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-              Operativo
-            </span>
+      {/* Navigation */}
+      <nav aria-label="Navegación principal" className="space-y-1 px-3">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive =
+            item.href === '/dashboard'
+              ? pathname === '/dashboard'
+              : pathname === item.href || pathname.startsWith(item.href + '/');
+
+          return (
+            <Link
+              key={item.label}
+              href={item.href}
+              aria-current={isActive ? 'page' : undefined}
+              onClick={onNavigate}
+              className={cn(
+                'flex h-11 items-center gap-3 rounded-md px-3 text-sm font-semibold transition-colors',
+                isActive
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                  : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/55 hover:text-sidebar-accent-foreground'
+              )}
+            >
+              <Icon className="size-[18px]" strokeWidth={1.8} />
+              <span>{item.label}</span>
+              {item.count ? (
+                <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[11px] text-primary-foreground">
+                  {item.count}
+                </span>
+              ) : null}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Footer / Bot WhatsApp Operational Status */}
+      <div className="mt-auto p-4">
+        <div className="border-t border-sidebar-border pt-4">
+          <div className="flex items-start gap-3 rounded-md bg-sidebar-accent/65 p-3.5">
+            <div className="relative mt-0.5">
+              <Bot className="size-5 text-sidebar-accent-foreground" strokeWidth={1.8} />
+              <span className="live-pulse absolute -right-1 -top-1 size-2.5 rounded-full border-2 border-sidebar-accent bg-success" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-sidebar-accent-foreground">Bot WhatsApp</p>
+              <p className="mt-1 text-[11px] font-semibold text-success">Operativo</p>
+              <p className="mt-1 text-[11px] leading-4 text-sidebar-foreground/55">
+                Atención comercial automatizada activa 24/7
+              </p>
+            </div>
           </div>
-          <p className="text-[11px] text-emerald-800 leading-tight">
-            Atención comercial automatizada activa 24/7.
-          </p>
         </div>
       </div>
     </aside>

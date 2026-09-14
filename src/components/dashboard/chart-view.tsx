@@ -32,9 +32,9 @@ function CustomTooltip({ active, payload, label }: any) {
           <span>{label}</span>
           <span className="text-slate-400 font-normal">Total: {total}</span>
         </div>
-        <div className="flex items-center justify-between text-emerald-400">
+        <div className="flex items-center justify-between text-brand-400">
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            <span className="w-2.5 h-2.5 rounded-full bg-brand-500" />
             <span>Resueltas por IA:</span>
           </div>
           <span className="font-semibold">{ia} ({pctIA}%)</span>
@@ -46,7 +46,7 @@ function CustomTooltip({ active, payload, label }: any) {
           </div>
           <span className="font-semibold">{humano} ({pctHumano}%)</span>
         </div>
-        <div className="pt-1 border-t border-slate-800 text-[11px] text-emerald-300/90 flex justify-between">
+        <div className="pt-1 border-t border-slate-800 text-[11px] text-brand-300/90 flex justify-between">
           <span>Horas ahorradas:</span>
           <span className="font-semibold">{horasAhorradas} h</span>
         </div>
@@ -86,17 +86,6 @@ export default function ChartView({ data }: ChartViewProps) {
             tick={{ fontSize: 11, fill: '#64748B' }}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Legend
-            verticalAlign="top"
-            align="right"
-            height={36}
-            iconType="circle"
-            formatter={(value) => (
-              <span className="text-xs text-slate-600 font-medium">
-                {value === 'ia' ? 'Resueltas por IA' : 'Derivadas a humano'}
-              </span>
-            )}
-          />
 
           <Area
             type="monotone"

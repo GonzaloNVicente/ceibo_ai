@@ -71,7 +71,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 flex flex-col justify-center items-center p-4">
       {/* Brand Header */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-lg shadow-emerald-500/25 mb-4">
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-600 to-teal-500 text-white shadow-lg shadow-brand-500/25 mb-4">
           <Bot className="w-8 h-8" />
         </div>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900">Ceibo AI</h1>
@@ -87,7 +87,7 @@ export default function LoginPage() {
             <CardTitle className="text-xl font-bold text-slate-900">
               Iniciar Sesión
             </CardTitle>
-            <Badge variant="success" className="text-xs bg-emerald-100 text-emerald-800">
+            <Badge variant="success" className="text-xs bg-brand-100 text-brand-800">
               Supabase Auth
             </Badge>
           </div>
@@ -117,7 +117,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@tuempresa.com"
-                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 pl-9 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 pl-9 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition"
                 />
               </div>
             </div>
@@ -134,7 +134,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 pl-9 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 pl-9 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition"
                 />
               </div>
             </div>
@@ -142,7 +142,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               variant="brand"
-              className="w-full font-semibold shadow-md shadow-emerald-600/20"
+              className="w-full font-semibold shadow-md shadow-brand-600/20"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -171,14 +171,14 @@ export default function LoginPage() {
               type="button"
               onClick={() => handleQuickTenant('admin@ceibo.ai')}
               disabled={isLoading}
-              className="text-left p-2.5 rounded-lg border border-slate-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/40 transition group text-xs disabled:opacity-50"
+              className="text-left p-2.5 rounded-lg border border-slate-200 bg-white hover:border-brand-500 hover:bg-brand-50/40 transition group text-xs disabled:opacity-50"
             >
-              <div className="font-semibold text-slate-800 group-hover:text-emerald-700 flex items-center gap-1">
-                <Building2 className="w-3 h-3 text-emerald-600" />
+              <div className="font-semibold text-slate-800 group-hover:text-brand-700 flex items-center gap-1">
+                <Building2 className="w-3 h-3 text-brand-600" />
                 Ceibo AI
               </div>
               <div className="text-[11px] text-slate-400">admin@ceibo.ai</div>
-              <div className="text-[10px] text-emerald-600 font-medium mt-0.5">Enterprise</div>
+              <div className="text-[10px] text-brand-600 font-medium mt-0.5">Enterprise</div>
             </button>
 
             <button
@@ -197,7 +197,7 @@ export default function LoginPage() {
           </div>
 
           <div className="flex items-center gap-2 pt-2 text-[11px] text-slate-500">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <ShieldCheck className="w-3.5 h-3.5 text-brand-600 shrink-0" />
             <span>Aislamiento estricto por <code>empresa_id</code> y Row Level Security.</span>
           </div>
         </div>
