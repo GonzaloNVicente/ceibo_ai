@@ -11,6 +11,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Clean up existing tables if rebuilding
+DROP TABLE IF EXISTS public.n8n_chat_histories CASCADE;
 DROP TABLE IF EXISTS public.chat_analytics CASCADE;
 DROP TABLE IF EXISTS public.perfiles CASCADE;
 DROP TABLE IF EXISTS public.empresas CASCADE;
