@@ -14,7 +14,6 @@ DROP VIEW IF EXISTS public.chat_analytics_daily CASCADE;
 DROP TABLE IF EXISTS public.chat_analytics CASCADE;
 DROP TABLE IF EXISTS public.perfiles CASCADE;
 DROP TABLE IF EXISTS public.empresas CASCADE;
-DELETE FROM auth.users WHERE email = 'admin@ceibo.ai';
 
 -- 2. Crear Tabla: empresas
 CREATE TABLE public.empresas (
@@ -96,20 +95,23 @@ CREATE POLICY n8n_chat_histories_tenant_isolation ON public.n8n_chat_histories F
 
 INSERT INTO public.empresas (id, name, slug, plan) VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'Ceibo AI Tech Solutions', 'ceibo-tech', 'enterprise') ON CONFLICT DO NOTHING;
 
-INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, role, confirmation_token, recovery_token, email_change_token_new, email_change)
-VALUES ('b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', '00000000-0000-0000-0000-000000000000', 'admin@ceibo.ai', crypt('password123', gen_salt('bf')), now(), '{"provider": "email", "providers": ["email"]}', '{}', now(), now(), 'authenticated', '', '', '', '') ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO auth.identities (id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
-VALUES (gen_random_uuid(), 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', format('{"sub":"%s","email":"%s"}', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', 'admin@ceibo.ai')::jsonb, 'email', now(), now(), now());
-
-INSERT INTO public.perfiles (id, empresa_id, full_name, role, email) VALUES ('b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'Admin Ceibo', 'admin', 'admin@ceibo.ai') ON CONFLICT (id) DO NOTHING;
-
 DO $$
 DECLARE
     v_empresa_id UUID := 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+    v_user_id UUID;
     v_date DATE;
     v_chats_per_day INT;
 BEGIN
+    -- Buscar el usuario creado manualmente
+    SELECT id INTO v_user_id FROM auth.users WHERE email = 'admin@ceibo.ai' LIMIT 1;
+    
+    IF v_user_id IS NOT NULL THEN
+        INSERT INTO public.perfiles (id, empresa_id, full_name, role, email) 
+        VALUES (v_user_id, v_empresa_id, 'Admin Ceibo', 'admin', 'admin@ceibo.ai') 
+        ON CONFLICT (id) DO NOTHING;
+    END IF;
+
+    -- Crear los chats
     FOR i IN 0..29 LOOP
         v_date := current_date - i;
         v_chats_per_day := floor(random() * 50 + 50);
