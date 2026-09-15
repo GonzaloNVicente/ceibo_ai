@@ -35,13 +35,14 @@ function getLeadStatus(lead: ChatAnalyticsRaw): 'uncategorized' | 'derivado' | '
 }
 
 export default function InboxPage() {
+  const { user, perfil } = useAuth();
   const [leads, setLeads] = useState<ChatAnalyticsRaw[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user, perfil } = useAuth();
+  const [errorState, setErrorState] = useState<string | null>(null);
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusTab>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
 
   useEffect(() => {
@@ -49,12 +50,14 @@ export default function InboxPage() {
       if (!user) return;
       try {
         setLoading(true);
-        const supabase = getBrowserMockClient();
-        const tenantClient = getTenantScopedClient(supabase);
+        setErrorState(null);
+        const supabase = createClient();
+        const tenantClient = createTenantScopedClient(supabase);
         const data = await tenantClient.getLeads();
         setLeads(data);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to load leads:', err);
+        setErrorState(err.message || 'Error al cargar los leads desde la base de datos');
       } finally {
         setLoading(false);
       }

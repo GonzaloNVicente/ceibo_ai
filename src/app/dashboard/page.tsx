@@ -58,14 +58,14 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, empresa, perfil, loading: authLoading } = useAuth();
 
-  // Initialize with Tenant A baseline data to guarantee immediate 1:1 visual match with reference
-  const initialRows = useMemo(() => generateMockAnalytics(MOCK_TENANTS.TENANT_A.id, 1.4, 30), []);
-  const initialMetrics = useMemo(() => calculateSummaryMetrics(initialRows), [initialRows]);
+  // Remove initial mock state to prevent silent fallback when real fetch fails
+  const emptyMetrics = useMemo(() => calculateSummaryMetrics([]), []);
 
-  const [analytics, setAnalytics] = useState<ChatAnalytics[]>(initialRows);
-  const [metrics, setMetrics] = useState<SummaryMetrics>(initialMetrics);
-  const [loadingData, setLoadingData] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<string>('hace 2 min');
+  const [analytics, setAnalytics] = useState<ChatAnalytics[]>([]);
+  const [metrics, setMetrics] = useState<SummaryMetrics>(emptyMetrics);
+  const [loadingData, setLoadingData] = useState(true); // Start loading immediately
+  const [errorState, setErrorState] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string>('actualizando...');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -74,6 +74,7 @@ export default function DashboardPage() {
 
   const loadDashboardData = useCallback(async () => {
     setLoadingData(true);
+    setErrorState(null);
     try {
       const supabase = createClient();
       const tenantClient = createTenantScopedClient(supabase);
@@ -87,10 +88,15 @@ export default function DashboardPage() {
         router.push('/login');
         return;
       }
+      // If it's a real database error, surface it instead of silently failing
+      setErrorState(err.message || 'Error desconocido al conectar con la base de datos.');
+      setAnalytics([]);
+      setMetrics(emptyMetrics);
+      setLastUpdated('error de conexin');
     } finally {
       setLoadingData(false);
     }
-  }, [router]);
+  }, [router, emptyMetrics]);
 
   useEffect(() => {
     if (!authLoading) {
@@ -188,6 +194,16 @@ export default function DashboardPage() {
 
   return (
     <>
+      {errorState && (
+        <div className="mb-6 rounded-md bg-destructive/15 p-4 text-destructive border border-destructive/30 shadow-sm">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="size-5" />
+            <h3 className="font-semibold text-lg">Error de Conexión a Base de Datos</h3>
+          </div>
+          <p className="mt-1 text-sm">{errorState}</p>
+        </div>
+      )}
+
       {/* Dashboard Page Header */}
       <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div>

@@ -21,13 +21,15 @@ import {
 } from 'lucide-react';
 
 export default function ChatsPage() {
+  const { user } = useAuth();
   const [leads, setLeads] = useState<ChatAnalyticsRaw[]>([]);
   const [loadingLeads, setLoadingLeads] = useState(true);
+  const [errorLeads, setErrorLeads] = useState<string | null>(null);
   
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
-  const { user } = useAuth();
+  const [errorMessages, setErrorMessages] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,12 +40,14 @@ export default function ChatsPage() {
       if (!user) return;
       try {
         setLoadingLeads(true);
-        const supabase = getBrowserMockClient();
-        const tenantClient = getTenantScopedClient(supabase);
+        setErrorLeads(null);
+        const supabase = createClient();
+        const tenantClient = createTenantScopedClient(supabase);
         const data = await tenantClient.getLeads();
         setLeads(data);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to load chat sessions:', err);
+        setErrorLeads(err.message || 'Error al cargar las sesiones');
       } finally {
         setLoadingLeads(false);
       }
@@ -56,12 +60,14 @@ export default function ChatsPage() {
       if (!selectedSessionId || !user) return;
       try {
         setLoadingMessages(true);
-        const supabase = getBrowserMockClient();
-        const tenantClient = getTenantScopedClient(supabase);
+        setErrorMessages(null);
+        const supabase = createClient();
+        const tenantClient = createTenantScopedClient(supabase);
         const data = await tenantClient.getChatMessages(selectedSessionId);
         setMessages(data);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to load messages:', err);
+        setErrorMessages(err.message || 'Error al cargar los mensajes');
       } finally {
         setLoadingMessages(false);
       }
