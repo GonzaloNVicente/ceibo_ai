@@ -37,7 +37,7 @@ export default function LoginPage() {
         setErrorMessage(res.error);
         setSubmitting(false);
       } else {
-        router.push('/');
+        router.push('/dashboard');
       }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Error al iniciar sesión.');
@@ -57,7 +57,7 @@ export default function LoginPage() {
         setErrorMessage(res.error);
         setSubmitting(false);
       } else {
-        router.push('/');
+        router.push('/dashboard');
       }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Error al conectar con el tenant.');
