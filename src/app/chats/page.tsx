@@ -18,6 +18,7 @@ import {
   MessageSquare,
   Clock,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 
 export default function ChatsPage() {
@@ -110,6 +111,16 @@ export default function ChatsPage() {
 
   return (
     <div className="space-y-4">
+      {(errorLeads || errorMessages) && (
+        <div className="rounded-md bg-destructive/15 p-4 text-destructive border border-destructive/30 shadow-sm">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="size-5" />
+            <h3 className="font-semibold text-lg">Error de Conexión a Base de Datos</h3>
+          </div>
+          <p className="mt-1 text-sm">{errorLeads || errorMessages}</p>
+        </div>
+      )}
+
       {/* Header section with live-pulse status and Sora display font */}
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
