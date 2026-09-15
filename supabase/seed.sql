@@ -1,7 +1,10 @@
 -- =============================================================================
--- CEIBO AI - Supabase Seed Script
--- Run this in your Supabase SQL Editor to populate the dashboard with real data.
+-- CEIBO AI - Supabase Seed Script V2
 -- =============================================================================
+
+-- 0. Limpiar datos viejos por las dudas
+DELETE FROM auth.users WHERE email = 'admin@ceibo.ai';
+DELETE FROM public.empresas WHERE slug = 'ceibo-tech';
 
 -- 1. Create a dummy tenant (Empresa)
 INSERT INTO public.empresas (id, name, slug, plan)
@@ -9,7 +12,6 @@ VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'Ceibo AI Tech Solutions', 'ceib
 ON CONFLICT (slug) DO NOTHING;
 
 -- 2. Create an auth user (Bypassing email confirmation for demo)
--- NOTE: We use the pgcrypto extension to hash the password 'password123'
 INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, role, confirmation_token, recovery_token, email_change_token_new, email_change)
 VALUES (
     'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22',
@@ -27,6 +29,18 @@ VALUES (
     '',
     ''
 ) ON CONFLICT (id) DO NOTHING;
+
+-- 2.5 CLAVE: Crear la identidad en Supabase Auth (Sin esto el login siempre falla en versiones nuevas de Supabase)
+INSERT INTO auth.identities (id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+VALUES (
+    gen_random_uuid(),
+    'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22',
+    format('{"sub":"%s","email":"%s"}', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', 'admin@ceibo.ai')::jsonb,
+    'email',
+    now(),
+    now(),
+    now()
+);
 
 -- 3. Link the user to the tenant via perfiles
 INSERT INTO public.perfiles (id, empresa_id, full_name, role, email)
