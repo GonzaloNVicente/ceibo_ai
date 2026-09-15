@@ -3,8 +3,8 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { ChatAnalyticsRaw, ChatMessage } from '@/lib/supabase/types';
 import { useAuth } from '@/contexts/auth-context';
-import { getTenantScopedClient } from '@/lib/supabase/tenant-client';
-import { getBrowserMockClient } from '@/lib/supabase/mock-client';
+import { createTenantScopedClient } from '@/lib/supabase/tenant-client';
+import { createClient } from '@/lib/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

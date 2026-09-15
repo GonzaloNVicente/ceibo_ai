@@ -15,14 +15,15 @@ import {
 } from '@/components/ui/table';
 import { ChatAnalyticsRaw } from '@/lib/supabase/types';
 import { useAuth } from '@/contexts/auth-context';
-import { getTenantScopedClient } from '@/lib/supabase/tenant-client';
-import { getBrowserMockClient } from '@/lib/supabase/mock-client';
+import { createTenantScopedClient } from '@/lib/supabase/tenant-client';
+import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import {
   Search,
   Clock,
   CheckCircle2,
   HelpCircle,
+  ShieldCheck,
   UserCheck,
   Filter,
 } from 'lucide-react';
