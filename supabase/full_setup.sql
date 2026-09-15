@@ -7,6 +7,8 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- 1. Limpieza total
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS public.crear_perfil_nuevo_usuario() CASCADE;
 DROP TABLE IF EXISTS public.n8n_chat_histories CASCADE;
 DROP VIEW IF EXISTS public.chat_analytics_daily CASCADE;
 DROP TABLE IF EXISTS public.chat_analytics CASCADE;
