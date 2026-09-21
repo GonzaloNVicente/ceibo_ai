@@ -32,7 +32,8 @@ type StatusTab = 'all' | 'derivado' | 'resuelto' | 'uncategorized';
 
 function getLeadStatus(lead: ChatAnalyticsRaw): 'uncategorized' | 'derivado' | 'resuelto' {
   if (!lead.query_type) return 'uncategorized';
-  return lead.resolution_status as 'derivado' | 'resuelto';
+  if (lead.resolution_status) return lead.resolution_status as 'derivado' | 'resuelto';
+  return lead.is_escalated ? 'derivado' : 'resuelto';
 }
 
 export default function InboxPage() {

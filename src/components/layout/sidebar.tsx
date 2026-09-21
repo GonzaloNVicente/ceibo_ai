@@ -23,7 +23,7 @@ export function BrandMark() {
 
 export const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: Gauge },
-  { label: 'Inbox', href: '/inbox', icon: Inbox, count: '24' },
+  { label: 'Inbox', href: '/inbox', icon: Inbox },
   { label: 'Chats', href: '/chats', icon: MessageCircleMore },
   { label: 'Base de Conocimiento', href: '/documents', icon: BookOpen },
   { label: 'Configuración', href: '/settings', icon: Settings },
