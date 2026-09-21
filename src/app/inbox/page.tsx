@@ -32,8 +32,8 @@ type StatusTab = 'all' | 'derivado' | 'resuelto' | 'uncategorized';
 
 function getLeadStatus(lead: ChatAnalyticsRaw): 'uncategorized' | 'derivado' | 'resuelto' {
   if (!lead.query_type) return 'uncategorized';
-  if (lead.resolution_status) return lead.resolution_status as 'derivado' | 'resuelto';
-  return lead.is_escalated ? 'derivado' : 'resuelto';
+  if (lead.resolution_status === 'derivado' || lead.is_escalated) return 'derivado';
+  return 'resuelto';
 }
 
 export default function InboxPage() {
