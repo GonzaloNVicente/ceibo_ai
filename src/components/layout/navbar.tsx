@@ -89,7 +89,7 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
           <button
             type="button"
             onClick={handleSignOut}
-            className="hidden text-muted-foreground hover:text-foreground transition-colors sm:block"
+            className="text-muted-foreground hover:text-foreground transition-colors"
             title="Cerrar sesión"
             aria-label="Cerrar sesión"
           >

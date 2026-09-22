@@ -27,11 +27,13 @@ import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { createTenantScopedClient } from '@/lib/supabase/tenant-client';
 import { useBotActivity } from '@/hooks/use-bot-activity';
+import { useToast } from '@/contexts/toast-context';
 
 type SettingsTab = 'general' | 'bot' | 'whatsapp' | 'team';
 
 export default function SettingsPage() {
   const { user, perfil, empresa } = useAuth();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [isSaving, setIsSaving] = useState(false);
   
@@ -57,9 +59,9 @@ export default function SettingsPage() {
       const supabase = createClient();
       const client = createTenantScopedClient(supabase);
       await client.updateEmpresaSettings(empresaName, assistantName, timezone);
-      alert('Configuración guardada exitosamente');
+      toast.success('Configuración guardada exitosamente');
     } catch (err: any) {
-      alert('Error al guardar: ' + err.message);
+      toast.error('Error al guardar: ' + err.message);
     } finally {
       setIsSaving(false);
     }
@@ -275,7 +277,7 @@ export default function SettingsPage() {
                 <Button 
                   variant="ghost" 
                   className="text-destructive hover:bg-destructive/10 text-xs"
-                  onClick={() => alert('Para desconectar tu línea contactá al administrador.')}
+                  onClick={() => toast.error('Para desconectar tu línea contactá al administrador.')}
                 >
                   Desconectar Línea
                 </Button>
@@ -321,7 +323,7 @@ export default function SettingsPage() {
               <CardFooter className="border-t border-border pt-4 flex justify-end">
                 <Button 
                   variant="secondary"
-                  onClick={() => alert('Invitación enviada por email.')}
+                  onClick={() => toast.success('Invitación enviada por email.')}
                 >
                   + Invitar Miembro
                 </Button>

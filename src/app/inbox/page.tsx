@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -17,7 +17,8 @@ import { ChatSession } from '@/lib/supabase/types';
 import { useAuth } from '@/contexts/auth-context';
 import { createTenantScopedClient } from '@/lib/supabase/tenant-client';
 import { createClient } from '@/lib/supabase/client';
-import { cn } from '@/lib/utils';
+import { useToast } from '@/contexts/toast-context';
+import { cn, formatQueryType } from '@/lib/utils';
 import {
   Search,
   Clock,
@@ -38,6 +39,7 @@ function getLeadStatus(lead: ChatSession): 'uncategorized' | 'derivado' | 'resue
 
 export default function InboxPage() {
   const { user, perfil } = useAuth();
+  const toast = useToast();
   const [leads, setLeads] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorState, setErrorState] = useState<string | null>(null);
@@ -76,7 +78,7 @@ export default function InboxPage() {
       setLeads(prev => prev.map(lead => lead.id === id ? { ...lead, ...updatedSession, assigned: { full_name: perfil?.full_name || null } } : lead));
     } catch (err: any) {
       console.error(err);
-      alert('Error al asignar: ' + err.message);
+      toast.error('Error al asignar: ' + err.message);
     }
   };
 
@@ -88,15 +90,11 @@ export default function InboxPage() {
       setLeads(prev => prev.map(lead => lead.id === id ? { ...lead, ...updatedSession } : lead));
     } catch (err: any) {
       console.error(err);
-      alert('Error al resolver: ' + err.message);
+      toast.error('Error al resolver: ' + err.message);
     }
   };
 
-  const formatQueryType = (type: string | null | undefined, productId: string | null) => {
-    if (!type) return 'Sin categorizar';
-    const typeStr = type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    return productId ? `${typeStr} · ${productId}` : typeStr;
-  };
+  const formatInboxQueryType = (type: string | null | undefined, productId: string | null) => { if (!type) return 'Sin categorizar'; const typeStr = formatQueryType(type); return productId ? \\ — \\ : typeStr; };
 
   // Computed properties
   const pendientesCount = leads.filter(l => getLeadStatus(l) === 'derivado').length;
@@ -131,7 +129,7 @@ export default function InboxPage() {
       }
     }
 
-    // Sort: Uncategorized y Pendientes primero (por fecha desc), Atendidos después (por fecha desc)
+    // Sort: Uncategorized y Pendientes primero (por fecha desc), Atendidos despuÃ©s (por fecha desc)
     result.sort((a, b) => {
       const statusA = getLeadStatus(a);
       const statusB = getLeadStatus(b);
@@ -155,7 +153,7 @@ export default function InboxPage() {
         <div className="rounded-md bg-destructive/15 p-4 text-destructive border border-destructive/30 shadow-sm">
           <div className="flex items-center gap-2">
             <ShieldCheck className="size-5" />
-            <h3 className="font-semibold text-lg">Error de Conexión a Base de Datos</h3>
+            <h3 className="font-semibold text-lg">Error de ConexiÃ³n a Base de Datos</h3>
           </div>
           <p className="mt-1 text-sm">{errorState}</p>
         </div>
@@ -174,7 +172,7 @@ export default function InboxPage() {
             Inbox de Leads WhatsApp
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Gestión comercial y asignación de leads calificados por la IA en tiempo real.
+            GestiÃ³n comercial y asignaciÃ³n de leads calificados por la IA en tiempo real.
           </p>
         </div>
         
@@ -216,7 +214,7 @@ export default function InboxPage() {
             <div>
               <CardTitle>Leads Calificados</CardTitle>
               <CardDescription>
-                Seguimiento comercial de clientes según nivel de prioridad y estado
+                Seguimiento comercial de clientes segÃºn nivel de prioridad y estado
               </CardDescription>
             </div>
           </div>
@@ -285,7 +283,7 @@ export default function InboxPage() {
                   <TableHead>Cliente</TableHead>
                   <TableHead>Detalle</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Acción</TableHead>
+                  <TableHead className="text-right">AcciÃ³n</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -309,7 +307,7 @@ export default function InboxPage() {
                     </TableCell>
                     <TableCell>
                       <div className="text-sm text-foreground">
-                        {formatQueryType(lead.query_type, lead.related_product_id)}
+                        {formatInboxQueryType(lead.query_type, lead.related_product_id)}
                       </div>
                       <div className="text-xs text-muted-foreground truncate max-w-xs" title={lead.last_message_text || ''}>
                         {lead.last_message_text || 'Sin mensajes'}
@@ -380,3 +378,4 @@ export default function InboxPage() {
     </div>
   );
 }
+

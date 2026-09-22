@@ -3,6 +3,8 @@ import { Manrope, Sora } from 'next/font/google';
 import './globals.css';
 import { AppShell } from '@/components/layout/app-shell';
 import { AuthProvider } from '@/contexts/auth-context';
+import { ToastProvider } from '@/contexts/toast-context';
+import { ToastContainer } from '@/components/ui/toast';
 
 const manrope = Manrope({
   subsets: ['latin'],
@@ -33,7 +35,10 @@ export default function RootLayout({
     <html lang="es" className={`${manrope.variable} ${sora.variable} h-full bg-background text-foreground`}>
       <body className="min-h-full font-sans bg-background text-foreground antialiased" style={{ fontFamily: 'var(--font-sans), system-ui, sans-serif' }}>
         <AuthProvider>
-          <AppShell>{children}</AppShell>
+          <ToastProvider>
+            <AppShell>{children}</AppShell>
+            <ToastContainer />
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

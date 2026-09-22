@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, formatQueryType } from '@/lib/utils';
 import {
   Search,
   Bot,
@@ -20,9 +20,11 @@ import {
   Sparkles,
   ShieldCheck,
 } from 'lucide-react';
+import { useToast } from '@/contexts/toast-context';
 
 export default function ChatsPage() {
-  const { user } = useAuth();
+  const { user, perfil } = useAuth();
+  const toast = useToast();
   const [leads, setLeads] = useState<ChatSession[]>([]);
   const [loadingLeads, setLoadingLeads] = useState(true);
   const [errorLeads, setErrorLeads] = useState<string | null>(null);
@@ -143,13 +145,13 @@ export default function ChatsPage() {
       setMessages(prev => [...prev, newMsg]);
       setLeads(prev => prev.map(l => l.id === selectedLead.id ? {
         ...l,
-        last_message_text: text,
+        last_message_text: `TÃº: ${text}`,
         last_message_at: newMsg.created_at,
         bot_paused: true
       } : l));
     } catch (err: any) {
       console.error(err);
-      alert('Error enviando mensaje: ' + err.message);
+      toast.error('Error enviando mensaje: ' + err.message);
     }
   };
 
@@ -162,7 +164,7 @@ export default function ChatsPage() {
       setLeads(prev => prev.map(l => l.id === selectedLead.id ? { ...l, ...updatedSession } : l));
     } catch (err: any) {
       console.error(err);
-      alert('Error al resolver: ' + err.message);
+      toast.error('Error al resolver: ' + err.message);
     }
   };
 
@@ -172,7 +174,7 @@ export default function ChatsPage() {
         <div className="rounded-md bg-destructive/15 p-4 text-destructive border border-destructive/30 shadow-sm">
           <div className="flex items-center gap-2">
             <ShieldCheck className="size-5" />
-            <h3 className="font-semibold text-lg">Error de Conexión a Base de Datos</h3>
+            <h3 className="font-semibold text-lg">Error de ConexiÃ³n a Base de Datos</h3>
           </div>
           <p className="mt-1 text-sm">{errorLeads || errorMessages}</p>
         </div>
@@ -206,7 +208,7 @@ export default function ChatsPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input 
                 type="text"
-                placeholder="Buscar cliente o teléfono..."
+                placeholder="Buscar cliente o telÃ©fono..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 className="pl-9 h-9 text-xs"
@@ -260,6 +262,9 @@ export default function ChatsPage() {
                           <span className="size-2 rounded-full bg-success/60 shrink-0" title="Resuelto por IA" />
                         )}
                       </div>
+                      <p className="text-[11px] text-muted-foreground mt-1 truncate" title={lead.last_message_text || ''}>
+                        {lead.last_message_text || 'Sin mensajes'}
+                      </p>
                     </div>
                   </button>
                 );
@@ -283,7 +288,7 @@ export default function ChatsPage() {
                       {selectedLead.customer_name || 'Cliente Desconocido'}
                     </h2>
                     <span className="text-xs text-muted-foreground">
-                      +{selectedLead.customer_phone} · {selectedLead.query_type ? selectedLead.query_type.replace(/_/g, ' ') : 'Sin clasificar'}
+                      +{selectedLead.customer_phone} Â· {selectedLead.query_type ? formatQueryType(selectedLead.query_type) : 'Sin clasificar'}
                     </span>
                   </div>
                 </div>
@@ -299,7 +304,7 @@ export default function ChatsPage() {
                     <div className="flex gap-2 items-center">
                       <Badge variant="ceibo">
                         <Clock className="size-3 mr-1" />
-                        Atención Requerida
+                        AtenciÃ³n Requerida
                       </Badge>
                       <Button variant="outline" size="sm" onClick={handleResolve}>
                         <CheckCircle2 className="size-3 mr-1" />
@@ -323,13 +328,13 @@ export default function ChatsPage() {
                   </div>
                 ) : messages.length === 0 ? (
                   <div className="text-center text-xs text-muted-foreground mt-12">
-                    No hay mensajes en esta conversación.
+                    No hay mensajes en esta conversaciÃ³n.
                   </div>
                 ) : (
                   <>
                     <div className="text-center my-2">
                       <span className="inline-block px-3 py-1 bg-muted/70 text-muted-foreground text-[11px] rounded-full font-medium">
-                        Inicio de la conversación WhatsApp
+                        Inicio de la conversaciÃ³n WhatsApp
                       </span>
                     </div>
                     
@@ -360,7 +365,7 @@ export default function ChatsPage() {
                             <div className="max-w-[80%] sm:max-w-[70%] rounded-2xl rounded-tr-xs bg-card border border-border text-card-foreground p-3.5 shadow-panel">
                               <div className="text-[10px] font-bold text-success uppercase flex items-center gap-1.5 mb-1">
                                 <Bot className="size-3.5 text-success" />
-                                Bot WhatsApp · IA
+                                Bot WhatsApp Â· IA
                               </div>
                               <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">
                                 {msg.message_text}
@@ -376,7 +381,7 @@ export default function ChatsPage() {
                             <div className="max-w-[80%] sm:max-w-[70%] rounded-2xl rounded-tr-xs bg-ceibo-soft text-foreground border border-ceibo/25 p-3.5 shadow-action">
                               <div className="text-[10px] font-bold text-ceibo uppercase flex items-center gap-1.5 mb-1">
                                 <UserCheck className="size-3.5 text-ceibo" />
-                                Asesor Comercial (Tú)
+                                Asesor Comercial (TÃº)
                               </div>
                               <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">
                                 {msg.message_text}
@@ -418,7 +423,7 @@ export default function ChatsPage() {
                 ) : (
                   <div className="text-center px-4 py-3 rounded-lg border border-accent/20 bg-accent/5 text-xs text-muted-foreground flex items-center justify-center gap-2">
                     <CheckCircle2 className="size-4 text-success" />
-                    Esta consulta fue resuelta exitosamente por la IA. El chat está cerrado.
+                    Esta consulta fue resuelta exitosamente por la IA. El chat estÃ¡ cerrado.
                   </div>
                 )}
               </div>
@@ -430,10 +435,10 @@ export default function ChatsPage() {
                 <MessageSquare className="size-8" strokeWidth={1.8} />
               </div>
               <h3 className="font-display font-bold text-lg text-foreground mb-1">
-                Ninguna conversación seleccionada
+                Ninguna conversaciÃ³n seleccionada
               </h3>
               <p className="text-sm text-center max-w-sm text-muted-foreground">
-                Seleccioná un cliente de la lista de la izquierda para inspeccionar el diálogo en tiempo real con el asistente virtual.
+                SeleccionÃ¡ un cliente de la lista de la izquierda para inspeccionar el diÃ¡logo en tiempo real con el asistente virtual.
               </p>
             </div>
           )}
@@ -442,3 +447,4 @@ export default function ChatsPage() {
     </div>
   );
 }
+
