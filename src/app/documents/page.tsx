@@ -32,8 +32,7 @@ import { RecordManagerDocument } from '@/lib/supabase/types';
 
 export default function DocumentsPage() {
   const { user, perfil } = useAuth();
-  const [isDragging, setIsDragging] = useState(false);
-  const [documents, setDocuments] = useState<RecordManagerDocument[]>([]);
+    const [documents, setDocuments] = useState<RecordManagerDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -52,37 +51,9 @@ export default function DocumentsPage() {
     };
     loadDocuments();
   }, [user, perfil?.empresa_id]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFiles(Array.from(e.dataTransfer.files));
-    }
-  };
-
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      handleFiles(Array.from(e.target.files));
-    }
-  };
-
-  const handleFiles = (files: File[]) => {
-    alert('La subida de archivos se realiza automáticamente desde n8n/Google Drive. La funcionalidad de drag & drop está deshabilitada por ahora.');
-  };
-
+  
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Eliminar este documento? Esta acción no se puede deshacer.')) return;
+    if (!confirm('Â¿Eliminar este documento? Esta acciÃ³n no se puede deshacer.')) return;
     
     try {
       const supabase = createClient();
@@ -149,19 +120,8 @@ export default function DocumentsPage() {
             Base de Conocimiento
           </h1>
           <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
-            Subí los catálogos y listas de precios de tu empresa. La IA los procesa automáticamente para responder consultas de clientes con precisión técnica.
+            SubÃ­ los catÃ¡logos y listas de precios de tu empresa. La IA los procesa automÃ¡ticamente para responder consultas de clientes con precisiÃ³n tÃ©cnica.
           </p>
-        </div>
-
-        <div>
-          <Button 
-            variant="primary" 
-            className="shadow-action"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <UploadCloud className="size-4" />
-            Subir Documento
-          </Button>
         </div>
       </div>
 
@@ -175,55 +135,33 @@ export default function DocumentsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div 
-              className={cn(
-                "border-2 border-dashed rounded-lg p-7 text-center transition-colors cursor-pointer",
-                isDragging 
-                  ? "border-primary bg-ceibo-soft/40" 
-                  : "border-border bg-background/50 hover:bg-muted/30 hover:border-primary/50"
-              )}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden"
-                multiple
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.html"
-                onChange={handleFileInput}
-              />
+            <div className="border-2 border-dashed rounded-lg p-7 text-center border-border bg-background/50 opacity-60">
               <div className="mx-auto size-12 rounded-md bg-accent text-accent-foreground flex items-center justify-center mb-3 shadow-xs">
                 <UploadCloud className="size-6" />
               </div>
-              <p className="text-sm font-semibold text-foreground">
-                Hacé clic o arrastrá archivos acá
-              </p>
-              <p className="text-xs text-muted-foreground mt-1.5">
-                Máximo 20MB por archivo
+              <h3 className="text-sm font-bold text-foreground">SincronizaciÃ³n AutomÃ¡tica</h3>
+              <p className="mt-1.5 max-w-[200px] mx-auto text-xs text-muted-foreground leading-relaxed">
+                La carga de catÃ¡logos se hace automÃ¡ticamente desde Google Drive. Escribinos si necesitÃ¡s agregar o actualizar un documento.
               </p>
             </div>
             
-            {/* Excel Advice Box */}
-            <div className="rounded-lg border border-accent/20 bg-accent/5 p-4">
-              <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                <FileSpreadsheet className="size-4 text-primary" />
-                ¿Vas a subir listas de precios en Excel?
-              </h4>
-              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-                Para que la IA indexe los precios con precisión, los archivos Excel o CSV deben tener estructura tabular plana (sin celdas combinadas).
-              </p>
-              <Button 
-                variant="secondary"
-                size="sm"
-                onClick={() => alert('Descargando plantilla_precios.xlsx...')}
-                className="w-full mt-3 text-xs"
-              >
-                <Download className="size-3.5" />
-                Descargar Plantilla Estándar
-              </Button>
+            <div className="rounded-lg border border-border bg-card p-3 shadow-xs">
+              <div className="flex items-start gap-3">
+                <FileSpreadsheet className="size-4 text-ceibo mt-0.5" />
+                <div>
+                  <h4 className="text-xs font-bold text-foreground">CatÃ¡logo Tabular</h4>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    DescargÃ¡ la plantilla para el catÃ¡logo de precios y stock.
+                  </p>
+                  <a 
+                    href="/plantilla_precios.xlsx" 
+                    download
+                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md font-semibold transition-[background-color,border-color,color] duration-150 border border-border bg-card text-foreground hover:border-primary/35 hover:bg-secondary h-8 px-3 mt-2 w-full text-xs"
+                  >
+                    <Download className="size-3.5 mr-1.5" /> Descargar Plantilla Estándar
+                  </a>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -244,16 +182,16 @@ export default function DocumentsPage() {
             {documents.length === 0 ? (
               <div className="text-center py-12 border border-dashed border-border rounded-lg">
                 <FileText className="size-10 text-muted-foreground mx-auto mb-2 opacity-50" />
-                <p className="text-sm text-muted-foreground">No hay documentos cargados todavía.</p>
+                <p className="text-sm text-muted-foreground">No hay documentos cargados todavÃ­a.</p>
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nombre</TableHead>
-                    <TableHead className="hidden sm:table-cell">Tamaño</TableHead>
+                    <TableHead className="hidden sm:table-cell">TamaÃ±o</TableHead>
                     <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Acción</TableHead>
+                    <TableHead className="text-right">AcciÃ³n</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -300,3 +238,4 @@ export default function DocumentsPage() {
     </div>
   );
 }
+
