@@ -133,7 +133,7 @@ export default function InboxPage() {
       }
     }
 
-    // Sort: Uncategorized y Pendientes primero (por fecha desc), Atendidos despuÃ©s (por fecha desc)
+    // Sort: Uncategorized y Pendientes primero (por fecha desc), Atendidos después (por fecha desc)
     result.sort((a, b) => {
       const statusA = getLeadStatus(a);
       const statusB = getLeadStatus(b);
@@ -157,7 +157,7 @@ export default function InboxPage() {
         <div className="rounded-md bg-destructive/15 p-4 text-destructive border border-destructive/30 shadow-sm">
           <div className="flex items-center gap-2">
             <ShieldCheck className="size-5" />
-            <h3 className="font-semibold text-lg">Error de ConexiÃ³n a Base de Datos</h3>
+            <h3 className="font-semibold text-lg">Error de Conexión a Base de Datos</h3>
           </div>
           <p className="mt-1 text-sm">{errorState}</p>
         </div>
@@ -176,7 +176,7 @@ export default function InboxPage() {
             Inbox de Leads WhatsApp
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            GestiÃ³n comercial y asignaciÃ³n de leads calificados por la IA en tiempo real.
+            Gestión comercial y asignación de leads calificados por la IA en tiempo real.
           </p>
         </div>
         
@@ -218,7 +218,7 @@ export default function InboxPage() {
             <div>
               <CardTitle>Leads Calificados</CardTitle>
               <CardDescription>
-                Seguimiento comercial de clientes segÃºn nivel de prioridad y estado
+                Seguimiento comercial de clientes según nivel de prioridad y estado
               </CardDescription>
             </div>
           </div>
@@ -282,12 +282,12 @@ export default function InboxPage() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="border-border hover:bg-transparent">
                   <TableHead>Fecha</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Detalle</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">AcciÃ³n</TableHead>
+                  <TableHead className="text-right">Acción</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
