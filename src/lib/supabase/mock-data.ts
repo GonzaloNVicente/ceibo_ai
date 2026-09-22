@@ -3,7 +3,7 @@
  * Preloaded fixtures for Tenant A ("Ceibo AI Tech Solutions") and Tenant B ("Rival Retail Corp").
  */
 
-import { Empresa, Perfil, ChatAnalytics, ChatAnalyticsRaw, SummaryMetrics, ChatMessage } from './types';
+import { Empresa, Perfil, ChatAnalytics, ChatAnalyticsRaw, ChatSession, SummaryMetrics, ChatMessage } from './types';
 
 export const MOCK_TENANTS: Record<string, Empresa> = {
   TENANT_A: {
@@ -123,8 +123,8 @@ const QUERY_TYPES = [
   null, // Simulate uncategorized
 ];
 
-export function generateMockRawAnalytics(empresaId: string, count = 50): ChatAnalyticsRaw[] {
-  const records: ChatAnalyticsRaw[] = [];
+export function generateMockSessions(empresaId: string, count = 50): ChatSession[] {
+  const records: ChatSession[] = [];
   const baseDate = new Date('2026-09-10T14:00:00Z');
 
   for (let i = 0; i < count; i++) {
@@ -134,26 +134,31 @@ export function generateMockRawAnalytics(empresaId: string, count = 50): ChatAna
     const nameIndex = Math.floor(Math.random() * REALISTIC_NAMES.length);
     
     records.push({
-      id: `raw-${empresaId.slice(0, 4)}-${i}`,
-      created_at: d.toISOString(),
+      id: `session-${empresaId.slice(0, 4)}-${i}`,
+      empresa_id: empresaId,
       customer_phone: `54911${Math.floor(Math.random() * 10000000)}`,
+      customer_name: REALISTIC_NAMES[nameIndex],
       query_type: QUERY_TYPES[qTypeIndex],
-      query_text: `Dummy query ${i}`,
       related_product_id: `PROD_${Math.floor(Math.random() * 10)}`,
-      bot_response: 'Dummy response',
       is_escalated: isEscalated,
       resolution_status: isEscalated ? 'derivado' : 'resuelto',
-      customer_name: REALISTIC_NAMES[nameIndex],
-      empresa_id: empresaId,
+      assigned_to: null,
+      bot_paused: false,
+      lead_created_at: isEscalated ? d.toISOString() : null,
+      last_message_text: `Mensaje de prueba ${i}`,
+      last_message_at: d.toISOString(),
+      created_at: new Date(d.getTime() - 1000 * 60 * 10).toISOString(),
     });
   }
   return records;
 }
 
-export const MOCK_RAW_ANALYTICS: ChatAnalyticsRaw[] = [
-  ...generateMockRawAnalytics(MOCK_TENANTS.TENANT_A.id, 150),
-  ...generateMockRawAnalytics(MOCK_TENANTS.TENANT_B.id, 30),
+export const MOCK_SESSIONS: ChatSession[] = [
+  ...generateMockSessions(MOCK_TENANTS.TENANT_A.id, 150),
+  ...generateMockSessions(MOCK_TENANTS.TENANT_B.id, 30),
 ];
+
+export const MOCK_RAW_ANALYTICS: ChatAnalyticsRaw[] = [];
 
 export function calculateSummaryMetrics(rows: ChatAnalytics[] | null | undefined): SummaryMetrics {
   if (!rows || rows.length === 0) {
@@ -183,7 +188,7 @@ export function calculateSummaryMetrics(rows: ChatAnalytics[] | null | undefined
   };
 }
 
-export const MOCK_CHAT_MESSAGES: ChatMessage[] = MOCK_RAW_ANALYTICS.flatMap((lead) => {
+export const MOCK_CHAT_MESSAGES: ChatMessage[] = MOCK_SESSIONS.flatMap((lead) => {
   const sessionStart = new Date(lead.created_at);
   const messages: ChatMessage[] = [];
   

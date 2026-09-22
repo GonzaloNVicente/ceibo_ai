@@ -34,8 +34,27 @@ export interface ChatAnalytics {
 
 export type ChatAnalyticsDaily = ChatAnalytics;
 
+export interface ChatSession {
+  id: string;
+  empresa_id: string;
+  customer_phone: string;
+  customer_name: string | null;
+  query_type: string | null;
+  related_product_id: string | null;
+  is_escalated: boolean;
+  resolution_status: 'resuelto' | 'derivado';
+  assigned_to: string | null;
+  bot_paused: boolean;
+  lead_created_at: string | null;
+  last_message_text: string | null;
+  last_message_at: string;
+  created_at: string;
+  assigned?: { full_name: string | null } | null;
+}
+
 export interface ChatAnalyticsRaw {
   id: string;
+  session_id: string | null;
   created_at: string;
   customer_phone: string | null;
   query_type: string | null;
@@ -50,7 +69,7 @@ export interface ChatAnalyticsRaw {
 
 export interface ChatMessage {
   id: string;
-  session_id: string; // References ChatAnalyticsRaw.id
+  session_id: string; // References ChatSession.id
   empresa_id: string;
   message_text: string;
   sender_type: 'user' | 'bot' | 'human_agent';
@@ -88,7 +107,11 @@ export interface TenantAnalyticsClient {
   getSession(): Promise<UserTenantSession | null>;
   getRecent30Days(): Promise<ChatAnalytics[]>;
   getSummaryMetrics(): Promise<SummaryMetrics>;
-  getLeads(): Promise<ChatAnalyticsRaw[]>;
+  getLeads(): Promise<ChatSession[]>;
+  getSessions(): Promise<ChatSession[]>;
+  assignSession(sessionId: string): Promise<ChatSession>;
+  resolveSession(sessionId: string): Promise<ChatSession>;
+  sendHumanMessage(sessionId: string, text: string): Promise<ChatMessage>;
   getChatMessages(sessionId: string): Promise<ChatMessage[]>;
 }
 

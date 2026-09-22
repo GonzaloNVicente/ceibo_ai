@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -12,6 +12,8 @@ import {
   Bot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/contexts/auth-context';
 
 export function BrandMark() {
   return (
@@ -21,7 +23,7 @@ export function BrandMark() {
   );
 }
 
-export const navItems = [
+export const navItems: { label: string; href: string; icon: any; count?: number }[] = [
   { label: 'Dashboard', href: '/dashboard', icon: Gauge },
   { label: 'Inbox', href: '/inbox', icon: Inbox },
   { label: 'Chats', href: '/chats', icon: MessageCircleMore },
@@ -37,6 +39,38 @@ interface SidebarProps {
 
 export function Sidebar({ className, onNavigate, isMobile }: SidebarProps) {
   const pathname = usePathname();
+  const { user, perfil } = useAuth();
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (!user || !perfil?.empresa_id) return;
+    const supabase = createClient() as any;
+    
+    // Initial fetch
+    supabase
+      .from('chat_sessions')
+      .select('*', { count: 'exact', head: true })
+      .eq('empresa_id', perfil.empresa_id)
+      .eq('resolution_status', 'derivado')
+      .then(({ count }: { count: number | null }) => setPendingCount(count || 0));
+
+    // Realtime subscription
+    const channel = supabase.channel('sidebar_updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_sessions' }, () => {
+        // Just re-fetch the count on any change to avoid complex state tracking
+        supabase
+          .from('chat_sessions')
+          .select('*', { count: 'exact', head: true })
+          .eq('empresa_id', perfil.empresa_id)
+          .eq('resolution_status', 'derivado')
+          .then(({ count }: { count: number | null }) => setPendingCount(count || 0));
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, perfil?.empresa_id]);
 
   return (
     <aside
@@ -84,7 +118,11 @@ export function Sidebar({ className, onNavigate, isMobile }: SidebarProps) {
             >
               <Icon className="size-[18px]" strokeWidth={1.8} />
               <span>{item.label}</span>
-              {item.count ? (
+              {item.label === 'Inbox' && pendingCount > 0 ? (
+                <span className="ml-auto rounded-full bg-ceibo px-2 py-0.5 text-[11px] font-bold text-white shadow-sm">
+                  {pendingCount}
+                </span>
+              ) : item.count ? (
                 <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[11px] text-primary-foreground">
                   {item.count}
                 </span>

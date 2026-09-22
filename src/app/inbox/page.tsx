@@ -13,7 +13,7 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table';
-import { ChatAnalyticsRaw } from '@/lib/supabase/types';
+import { ChatSession } from '@/lib/supabase/types';
 import { useAuth } from '@/contexts/auth-context';
 import { createTenantScopedClient } from '@/lib/supabase/tenant-client';
 import { createClient } from '@/lib/supabase/client';
@@ -30,7 +30,7 @@ import {
 
 type StatusTab = 'all' | 'derivado' | 'resuelto' | 'uncategorized';
 
-function getLeadStatus(lead: ChatAnalyticsRaw): 'uncategorized' | 'derivado' | 'resuelto' {
+function getLeadStatus(lead: ChatSession): 'uncategorized' | 'derivado' | 'resuelto' {
   if (!lead.query_type) return 'uncategorized';
   if (lead.resolution_status === 'derivado' || lead.is_escalated) return 'derivado';
   return 'resuelto';
@@ -38,7 +38,7 @@ function getLeadStatus(lead: ChatAnalyticsRaw): 'uncategorized' | 'derivado' | '
 
 export default function InboxPage() {
   const { user, perfil } = useAuth();
-  const [leads, setLeads] = useState<ChatAnalyticsRaw[]>([]);
+  const [leads, setLeads] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorState, setErrorState] = useState<string | null>(null);
 
@@ -68,13 +68,33 @@ export default function InboxPage() {
     loadLeads();
   }, [user]);
 
-  const handleAssign = (id: string) => {
-    alert(`Asignado a ${perfil?.full_name || 'ti'}`);
+  const handleAssign = async (id: string) => {
+    try {
+      const supabaseClient = createClient();
+      const tenantClient = createTenantScopedClient(supabaseClient);
+      const updatedSession = await tenantClient.assignSession(id);
+      setLeads(prev => prev.map(lead => lead.id === id ? { ...lead, ...updatedSession, assigned: { full_name: perfil?.full_name || null } } : lead));
+    } catch (err: any) {
+      console.error(err);
+      alert('Error al asignar: ' + err.message);
+    }
+  };
+
+  const handleResolve = async (id: string) => {
+    try {
+      const supabaseClient = createClient();
+      const tenantClient = createTenantScopedClient(supabaseClient);
+      const updatedSession = await tenantClient.resolveSession(id);
+      setLeads(prev => prev.map(lead => lead.id === id ? { ...lead, ...updatedSession } : lead));
+    } catch (err: any) {
+      console.error(err);
+      alert('Error al resolver: ' + err.message);
+    }
   };
 
   const formatQueryType = (type: string | null | undefined, productId: string | null) => {
     if (!type) return 'Sin categorizar';
-    const typeStr = type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const typeStr = type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     return productId ? `${typeStr} · ${productId}` : typeStr;
   };
 
@@ -181,6 +201,7 @@ export default function InboxPage() {
               <option value="reclamo">Reclamo</option>
               <option value="consulta_stock">Consulta Stock</option>
               <option value="consulta_precio">Consulta Precio</option>
+              <option value="consulta_general">Consulta General</option>
               <option value="pedido">Pedido</option>
               <option value="uncategorized">Sin categorizar</option>
             </select>
@@ -271,7 +292,7 @@ export default function InboxPage() {
                 {filteredLeads.map((lead) => (
                   <TableRow key={lead.id}>
                     <TableCell className="text-muted-foreground text-xs font-mono">
-                      {new Date(lead.created_at).toLocaleString('es-AR', { 
+                      {new Date(lead.last_message_at || lead.created_at).toLocaleString('es-AR', { 
                         day: '2-digit', month: '2-digit', year: '2-digit',
                         hour: '2-digit', minute: '2-digit'
                       })}
@@ -286,8 +307,13 @@ export default function InboxPage() {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatQueryType(lead.query_type, lead.related_product_id)}
+                    <TableCell>
+                      <div className="text-sm text-foreground">
+                        {formatQueryType(lead.query_type, lead.related_product_id)}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate max-w-xs" title={lead.last_message_text || ''}>
+                        {lead.last_message_text || 'Sin mensajes'}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {getLeadStatus(lead) === 'uncategorized' ? (
@@ -308,15 +334,33 @@ export default function InboxPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {lead.resolution_status === 'derivado' && (
-                        <Button 
-                          variant="secondary" 
-                          size="sm" 
-                          onClick={() => handleAssign(lead.id)}
-                        >
-                          <UserCheck className="size-3.5" />
-                          Asignar
-                        </Button>
+                      {getLeadStatus(lead) === 'derivado' && (
+                        <div className="flex justify-end gap-2">
+                          {lead.assigned_to ? (
+                            <Button 
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleResolve(lead.id)}
+                            >
+                              <CheckCircle2 className="size-3.5 mr-1" />
+                              Resolver
+                            </Button>
+                          ) : (
+                            <Button 
+                              variant="secondary" 
+                              size="sm" 
+                              onClick={() => handleAssign(lead.id)}
+                            >
+                              <UserCheck className="size-3.5 mr-1" />
+                              Asignar
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                      {lead.assigned?.full_name && (
+                        <div className="text-[10px] text-muted-foreground mt-1">
+                          Asignado a: {lead.assigned.full_name}
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>

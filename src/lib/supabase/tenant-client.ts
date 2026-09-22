@@ -13,6 +13,7 @@ import {
   SummaryMetrics,
   ChatAnalyticsRaw,
   ChatMessage,
+  ChatSession,
 } from './types';
 import { calculateSummaryMetrics, MOCK_TENANTS } from './mock-data';
 
@@ -97,24 +98,45 @@ export function createTenantScopedClient(supabaseClient: any): TenantAnalyticsCl
       return calculateSummaryMetrics(rows);
     },
 
-    async getLeads(): Promise<ChatAnalyticsRaw[]> {
+    async getLeads(): Promise<ChatSession[]> {
       const session = await this.getSession();
       if (!session || !session.perfil?.empresa_id) {
         throw new Error('UNAUTHORIZED: No active tenant session');
       }
 
       const { data, error } = await supabaseClient
-        .from('chat_analytics')
-        .select('*')
+        .from('chat_sessions')
+        .select('*, assigned:perfiles(full_name)')
         .eq('empresa_id', session.perfil.empresa_id)
-
-        .order('created_at', { ascending: false });
+        .order('last_message_at', { ascending: false });
 
       if (error) {
         throw new Error(error.message);
       }
 
-      return (data as ChatAnalyticsRaw[]) || [];
+      return (data as ChatSession[]) || [];
+    },
+
+    async getSessions(): Promise<ChatSession[]> {
+      return this.getLeads();
+    },
+
+    async assignSession(sessionId: string): Promise<ChatSession> {
+      const { data, error } = await supabaseClient.rpc('assign_chat_session', { p_session_id: sessionId });
+      if (error) throw new Error(error.message);
+      return (Array.isArray(data) ? data[0] : data) as ChatSession;
+    },
+
+    async resolveSession(sessionId: string): Promise<ChatSession> {
+      const { data, error } = await supabaseClient.rpc('resolve_chat_session', { p_session_id: sessionId });
+      if (error) throw new Error(error.message);
+      return (Array.isArray(data) ? data[0] : data) as ChatSession;
+    },
+
+    async sendHumanMessage(sessionId: string, text: string): Promise<ChatMessage> {
+      const { data, error } = await supabaseClient.rpc('send_human_message', { p_session_id: sessionId, p_text: text });
+      if (error) throw new Error(error.message);
+      return (Array.isArray(data) ? data[0] : data) as ChatMessage;
     },
 
     async getChatMessages(sessionId: string): Promise<ChatMessage[]> {

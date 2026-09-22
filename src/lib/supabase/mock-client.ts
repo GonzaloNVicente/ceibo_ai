@@ -10,10 +10,10 @@ import {
   MOCK_USERS,
   MOCK_ANALYTICS,
   MockUserAccount,
-  MOCK_RAW_ANALYTICS,
+  MOCK_SESSIONS,
   MOCK_CHAT_MESSAGES,
 } from './mock-data';
-import { Empresa, Perfil, ChatAnalytics, ChatAnalyticsRaw, ChatMessage } from './types';
+import { Empresa, Perfil, ChatAnalytics, ChatSession, ChatMessage } from './types';
 
 export interface MockAuthResponse {
   data: {
@@ -41,40 +41,18 @@ export interface SortConfig {
 
 const SESSION_COOKIE_NAME = 'ceibo_mock_user_id';
 
-function getStoredUserId(): string | null {
+export function persistUserId(id: string | null) {
   if (typeof window !== 'undefined') {
-    // Check localStorage first
-    try {
-      const stored = window.localStorage.getItem(SESSION_COOKIE_NAME);
-      if (stored) return stored;
-    } catch {
-      // ignore
-    }
-    // Check document.cookie
-    try {
-      const match = document.cookie.match(new RegExp(`(^|; )${SESSION_COOKIE_NAME}=([^;]*)`));
-      if (match) return decodeURIComponent(match[2]);
-    } catch {
-      // ignore
-    }
+    if (id) localStorage.setItem(SESSION_COOKIE_NAME, id);
+    else localStorage.removeItem(SESSION_COOKIE_NAME);
   }
-  return null;
 }
 
-function persistUserId(userId: string | null) {
+export function getStoredUserId(): string | null {
   if (typeof window !== 'undefined') {
-    try {
-      if (userId) {
-        window.localStorage.setItem(SESSION_COOKIE_NAME, userId);
-        document.cookie = `${SESSION_COOKIE_NAME}=${encodeURIComponent(userId)}; path=/; max-age=86400; SameSite=Lax`;
-      } else {
-        window.localStorage.removeItem(SESSION_COOKIE_NAME);
-        document.cookie = `${SESSION_COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax`;
-      }
-    } catch {
-      // ignore
-    }
+    return localStorage.getItem(SESSION_COOKIE_NAME);
   }
+  return null;
 }
 
 export function createMockSupabaseEngine(
@@ -83,7 +61,7 @@ export function createMockSupabaseEngine(
 ) {
   let currentUser: MockUserAccount | null = initialUser;
   let customAnalytics: ChatAnalytics[] = [...analyticsDataset];
-  let rawAnalyticsDataset: ChatAnalyticsRaw[] = [...MOCK_RAW_ANALYTICS];
+  let sessionsDataset: ChatSession[] = [...MOCK_SESSIONS];
   let chatMessagesDataset: ChatMessage[] = [...MOCK_CHAT_MESSAGES];
 
   // Auto-restore browser session if available and no initialUser passed
@@ -206,9 +184,11 @@ export function createMockSupabaseEngine(
       const filters: QueryFilter[] = [];
       let sortConfig: SortConfig | null = null;
       let limitCount: number | null = null;
+      let selectOpts: any = null;
 
       const queryBuilder = {
-        select(cols = '*') {
+        select(cols = '*', opts?: any) {
+          selectOpts = opts;
           return queryBuilder;
         },
         eq(col: string, val: any) {
@@ -238,7 +218,7 @@ export function createMockSupabaseEngine(
             error: res.error,
           };
         },
-        then(resolve: (value: { data: any[] | null; error: { message: string } | null }) => void) {
+        then(resolve: (value: { data: any[] | null; error: { message: string } | null; count?: number }) => void) {
           let rows: any[] = [];
 
           if (table === 'perfiles') {
@@ -251,8 +231,8 @@ export function createMockSupabaseEngine(
             rows = Object.values(MOCK_TENANTS);
           } else if (table === 'chat_analytics_daily') {
             rows = [...customAnalytics];
-          } else if (table === 'chat_analytics') {
-            rows = [...rawAnalyticsDataset];
+          } else if (table === 'chat_sessions') {
+            rows = [...sessionsDataset];
           } else if (table === 'n8n_chat_histories') {
             rows = [...chatMessagesDataset];
           } else {
@@ -265,7 +245,7 @@ export function createMockSupabaseEngine(
           if (!userEmpresaId) {
             rows = [];
           } else {
-            if (table === 'chat_analytics_daily' || table === 'chat_analytics' || table === 'n8n_chat_histories') {
+            if (table === 'chat_analytics_daily' || table === 'chat_sessions' || table === 'n8n_chat_histories') {
               rows = rows.filter((r) => r.empresa_id === userEmpresaId);
             } else if (table === 'empresas') {
               rows = rows.filter((r) => r.id === userEmpresaId);
@@ -284,6 +264,8 @@ export function createMockSupabaseEngine(
               rows = rows.filter((r) => r[f.col] <= f.val);
             }
           }
+          
+          const totalCount = rows.length;
 
           // Apply sorting
           if (sortConfig) {
@@ -301,12 +283,83 @@ export function createMockSupabaseEngine(
             rows = rows.slice(0, limitCount);
           }
 
-          resolve({ data: rows, error: null });
+          if (selectOpts?.count === 'exact') {
+            resolve({ data: selectOpts.head ? null : rows, count: totalCount, error: null });
+          } else {
+            resolve({ data: rows, error: null });
+          }
         },
       };
 
       return queryBuilder;
     },
+
+    async rpc(fnName: string, args?: any): Promise<{ data: any | null; error: { message: string } | null }> {
+      if (!currentUser?.perfil?.empresa_id) {
+        return { data: null, error: { message: 'Unauthorized' } };
+      }
+      if (fnName === 'assign_chat_session') {
+        const idx = sessionsDataset.findIndex(s => s.id === args?.p_session_id);
+        if (idx > -1) {
+          sessionsDataset[idx] = { 
+            ...sessionsDataset[idx], 
+            assigned_to: currentUser.perfil.id, 
+            assigned: { full_name: currentUser.perfil.full_name }
+          };
+          return { data: [sessionsDataset[idx]], error: null };
+        }
+        return { data: null, error: { message: 'Session not found' } };
+      }
+      if (fnName === 'resolve_chat_session') {
+        const idx = sessionsDataset.findIndex(s => s.id === args?.p_session_id);
+        if (idx > -1) {
+          sessionsDataset[idx] = { 
+            ...sessionsDataset[idx], 
+            resolution_status: 'resuelto',
+            bot_paused: false
+          };
+          return { data: [sessionsDataset[idx]], error: null };
+        }
+        return { data: null, error: { message: 'Session not found' } };
+      }
+      if (fnName === 'send_human_message') {
+        const session = sessionsDataset.find(s => s.id === args?.p_session_id);
+        if (session) {
+          const newMsg: ChatMessage = {
+            id: `mock-msg-${Date.now()}`,
+            session_id: session.id,
+            empresa_id: session.empresa_id,
+            message_text: args?.p_text || '',
+            sender_type: 'human_agent',
+            created_at: new Date().toISOString()
+          };
+          chatMessagesDataset.push(newMsg);
+          // Update session
+          session.last_message_text = newMsg.message_text;
+          session.last_message_at = newMsg.created_at;
+          session.bot_paused = true;
+          return { data: [newMsg], error: null };
+        }
+        return { data: null, error: { message: 'Session not found' } };
+      }
+      return { data: null, error: { message: `RPC '${fnName}' not implemented in mock` } };
+    },
+
+    channel(name: string) {
+      const channelMock: any = {
+        on(event: string, opts: any, callback: (payload: any) => void) {
+          return channelMock;
+        },
+        subscribe() {
+          return channelMock;
+        }
+      };
+      return channelMock;
+    },
+
+    removeChannel(channel: any) {
+      return;
+    }
   };
 
   return engine;

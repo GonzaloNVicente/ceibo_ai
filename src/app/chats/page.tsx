@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { ChatAnalyticsRaw, ChatMessage } from '@/lib/supabase/types';
+import { ChatSession, ChatMessage } from '@/lib/supabase/types';
 import { useAuth } from '@/contexts/auth-context';
 import { createTenantScopedClient } from '@/lib/supabase/tenant-client';
 import { createClient } from '@/lib/supabase/client';
@@ -23,7 +23,7 @@ import {
 
 export default function ChatsPage() {
   const { user } = useAuth();
-  const [leads, setLeads] = useState<ChatAnalyticsRaw[]>([]);
+  const [leads, setLeads] = useState<ChatSession[]>([]);
   const [loadingLeads, setLoadingLeads] = useState(true);
   const [errorLeads, setErrorLeads] = useState<string | null>(null);
   
@@ -80,6 +80,43 @@ export default function ChatsPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const selectedSessionRef = useRef(selectedSessionId);
+  useEffect(() => {
+    selectedSessionRef.current = selectedSessionId;
+  }, [selectedSessionId]);
+
+  useEffect(() => {
+    if (!user) return;
+    const supabase = createClient();
+    const channel = (supabase as any).channel('chat_updates')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'n8n_chat_histories' }, (payload: any) => {
+        const newMsg = payload.new as ChatMessage;
+        setMessages(prev => {
+          if (newMsg.session_id === selectedSessionRef.current && !prev.some(m => m.id === newMsg.id)) {
+            return [...prev, newMsg];
+          }
+          return prev;
+        });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_sessions' }, (payload: any) => {
+        if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+          const updatedSession = payload.new as ChatSession;
+          setLeads(prev => {
+            const exists = prev.some(l => l.id === updatedSession.id);
+            let newLeads = exists 
+              ? prev.map(l => l.id === updatedSession.id ? { ...l, ...updatedSession } : l)
+              : [updatedSession, ...prev];
+            return newLeads.sort((a, b) => new Date(b.last_message_at || b.created_at).getTime() - new Date(a.last_message_at || a.created_at).getTime());
+          });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const selectedLead = leads.find(l => l.id === selectedSessionId);
 
   const filteredLeads = useMemo(() => {
@@ -91,22 +128,42 @@ export default function ChatsPage() {
     );
   }, [leads, searchQuery]);
 
-  const handleSendMessage = (e?: React.FormEvent) => {
+  const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!newMessage.trim() || !selectedLead) return;
 
-    const mockSentMessage: ChatMessage = {
-      id: `mock-sent-${Date.now()}`,
-      session_id: selectedLead.id,
-      empresa_id: selectedLead.empresa_id,
-      message_text: newMessage,
-      sender_type: 'human_agent',
-      created_at: new Date().toISOString(),
-    };
-
-    // Optimistic UI update
-    setMessages(prev => [...prev, mockSentMessage]);
+    const text = newMessage.trim();
     setNewMessage('');
+
+    try {
+      const supabase = createClient();
+      const tenantClient = createTenantScopedClient(supabase);
+      const newMsg = await tenantClient.sendHumanMessage(selectedLead.id, text);
+      
+      setMessages(prev => [...prev, newMsg]);
+      setLeads(prev => prev.map(l => l.id === selectedLead.id ? {
+        ...l,
+        last_message_text: text,
+        last_message_at: newMsg.created_at,
+        bot_paused: true
+      } : l));
+    } catch (err: any) {
+      console.error(err);
+      alert('Error enviando mensaje: ' + err.message);
+    }
+  };
+
+  const handleResolve = async () => {
+    if (!selectedLead) return;
+    try {
+      const supabase = createClient();
+      const tenantClient = createTenantScopedClient(supabase);
+      const updatedSession = await tenantClient.resolveSession(selectedLead.id);
+      setLeads(prev => prev.map(l => l.id === selectedLead.id ? { ...l, ...updatedSession } : l));
+    } catch (err: any) {
+      console.error(err);
+      alert('Error al resolver: ' + err.message);
+    }
   };
 
   return (
@@ -226,17 +283,29 @@ export default function ChatsPage() {
                       {selectedLead.customer_name || 'Cliente Desconocido'}
                     </h2>
                     <span className="text-xs text-muted-foreground">
-                      +{selectedLead.customer_phone} · {selectedLead.query_type ? selectedLead.query_type.replace('_', ' ') : 'Sin clasificar'}
+                      +{selectedLead.customer_phone} · {selectedLead.query_type ? selectedLead.query_type.replace(/_/g, ' ') : 'Sin clasificar'}
                     </span>
                   </div>
                 </div>
 
-                <div>
-                  {selectedLead.resolution_status === 'derivado' ? (
-                    <Badge variant="ceibo">
-                      <Clock className="size-3 mr-1" />
-                      Atención Requerida
+                <div className="flex items-center gap-3">
+                  {selectedLead.bot_paused && (
+                    <Badge variant="warning">
+                      <ShieldCheck className="size-3 mr-1" />
+                      Bot Pausado
                     </Badge>
+                  )}
+                  {selectedLead.resolution_status === 'derivado' ? (
+                    <div className="flex gap-2 items-center">
+                      <Badge variant="ceibo">
+                        <Clock className="size-3 mr-1" />
+                        Atención Requerida
+                      </Badge>
+                      <Button variant="outline" size="sm" onClick={handleResolve}>
+                        <CheckCircle2 className="size-3 mr-1" />
+                        Resolver / Reactivar bot
+                      </Button>
+                    </div>
                   ) : (
                     <Badge variant="success">
                       <CheckCircle2 className="size-3 mr-1" />
