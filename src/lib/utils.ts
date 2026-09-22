@@ -1,4 +1,4 @@
-﻿import { type ClassValue, clsx } from "clsx";
+import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 /**
@@ -19,14 +19,14 @@ export function formatNumber(value: number): string {
  * Formats hours with 1 decimal digit.
  */
 export function formatHours(hours: number): string {
-  return ${hours.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} h;
+  return `${hours.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} h`;
 }
 
 /**
  * Formats float to percentage string.
  */
 export function formatPercentage(value: number): string {
-  return ${(value * 100).toFixed(1)}%;
+  return `${(value * 100).toFixed(1)}%`;
 }
 
 /**

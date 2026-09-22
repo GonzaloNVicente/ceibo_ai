@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -94,7 +94,11 @@ export default function InboxPage() {
     }
   };
 
-  const formatInboxQueryType = (type: string | null | undefined, productId: string | null) => { if (!type) return 'Sin categorizar'; const typeStr = formatQueryType(type); return productId ? \\ — \\ : typeStr; };
+  const formatInboxQueryType = (type: string | null | undefined, productId: string | null) => {
+    if (!type) return 'Sin categorizar';
+    const typeStr = formatQueryType(type);
+    return productId ? `${typeStr} — ${productId}` : typeStr;
+  };
 
   // Computed properties
   const pendientesCount = leads.filter(l => getLeadStatus(l) === 'derivado').length;
