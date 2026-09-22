@@ -123,10 +123,15 @@ export function createTenantScopedClient(supabaseClient: any): TenantAnalyticsCl
     },
 
     async getKnowledgeDocuments(): Promise<RecordManagerDocument[]> {
+      const session = await this.getSession();
+      if (!session || !session.perfil?.empresa_id) {
+        throw new Error('UNAUTHORIZED: No active tenant session');
+      }
+
       const { data, error } = await supabaseClient
         .from('record_manager')
         .select('*')
-        .eq('empresa_id', this.empresaId)
+        .eq('empresa_id', session.perfil.empresa_id)
         .order('created_at', { ascending: false });
 
       if (error) {
