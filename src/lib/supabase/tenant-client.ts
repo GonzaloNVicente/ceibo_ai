@@ -178,6 +178,38 @@ export function createTenantScopedClient(supabaseClient: any): TenantAnalyticsCl
 
       return (data as ChatMessage[]) || [];
     },
+
+    async updateEmpresaSettings(name: string, assistantName: string, timezone: string): Promise<any> {
+      const { data, error } = await supabaseClient.rpc('update_empresa_settings', {
+        p_name: name,
+        p_assistant_name: assistantName,
+        p_timezone: timezone,
+      });
+      if (error) throw error;
+      return data;
+    },
+
+    async getLastActivity(): Promise<string | null> {
+      const session = await this.getSession();
+      if (!session || !session.perfil?.empresa_id) return null;
+
+      const { data, error } = await supabaseClient
+        .from('chat_sessions')
+        .select('last_message_at')
+        .eq('empresa_id', session.perfil.empresa_id)
+        .order('last_message_at', { ascending: false })
+        .limit(1);
+
+      if (error || !data || data.length === 0) return null;
+      return data[0].last_message_at;
+    },
+
+    async deleteKnowledgeDocument(documentId: number): Promise<void> {
+      const { error } = await supabaseClient.rpc('delete_knowledge_document', {
+        p_document_id: documentId,
+      });
+      if (error) throw error;
+    }
   };
 }
 

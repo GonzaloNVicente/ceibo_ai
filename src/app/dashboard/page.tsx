@@ -123,14 +123,12 @@ export default function DashboardPage() {
       {
         label: 'Volumen de Consultas',
         value: metrics.totalConsultas.toLocaleString(),
-        detail: '+18.4% vs. mes anterior',
         note: 'Últimos 30 días de actividad WhatsApp',
         tone: 'success' as const,
       },
       {
         label: 'Horas Ahorradas',
         value: `${metrics.horasAhorradas.toFixed(1)} h`,
-        detail: '12 min promedio ahorrado por chat',
         note: `Equivale a ~${repEquivalent} asesores FTE de ventas liberados`,
         tone: 'neutral' as const,
       },

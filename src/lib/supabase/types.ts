@@ -8,6 +8,8 @@ export interface Empresa {
   name: string;
   slug: string;
   plan: 'starter' | 'growth' | 'enterprise';
+  assistant_name?: string;
+  timezone?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -125,6 +127,9 @@ export interface TenantAnalyticsClient {
   resolveSession(sessionId: string): Promise<ChatSession>;
   sendHumanMessage(sessionId: string, text: string): Promise<ChatMessage>;
   getChatMessages(sessionId: string): Promise<ChatMessage[]>;
+  updateEmpresaSettings(name: string, assistantName: string, timezone: string): Promise<any>;
+  getLastActivity(): Promise<string | null>;
+  deleteKnowledgeDocument(documentId: number): Promise<void>;
 }
 
 export interface AuthContextType {

@@ -81,8 +81,17 @@ export default function DocumentsPage() {
     alert('La subida de archivos se realiza automáticamente desde n8n/Google Drive. La funcionalidad de drag & drop está deshabilitada por ahora.');
   };
 
-  const handleDelete = (id: string) => {
-    setDocuments(prev => prev.filter(doc => doc.id.toString() !== id));
+  const handleDelete = async (id: string) => {
+    if (!confirm('¿Eliminar este documento? Esta acción no se puede deshacer.')) return;
+    
+    try {
+      const supabase = createClient();
+      const client = createTenantScopedClient(supabase);
+      await client.deleteKnowledgeDocument(parseInt(id, 10));
+      setDocuments(prev => prev.filter(doc => doc.id.toString() !== id));
+    } catch (err: any) {
+      alert('Error al eliminar: ' + err.message);
+    }
   };
 
   const formatBytes = (bytes: number) => {

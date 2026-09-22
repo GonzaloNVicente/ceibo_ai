@@ -344,8 +344,17 @@ export function createMockSupabaseEngine(
           return { data: [newMsg], error: null };
         }
         return { data: null, error: { message: 'Session not found' } };
+      } else if (fnName === 'update_empresa_settings') {
+        return { data: {}, error: null };
+      } else if (fnName === 'delete_knowledge_document') {
+        const docId = args?.p_document_id;
+        const idx = MOCK_DOCUMENTS.findIndex(d => d.id === docId);
+        if (idx > -1) {
+          MOCK_DOCUMENTS.splice(idx, 1);
+        }
+        return { data: null, error: null };
       }
-      return { data: null, error: { message: `RPC '${fnName}' not implemented in mock` } };
+      return { data: null, error: { message: `RPC ${fnName} not implemented in mock` } };
     },
 
     channel(name: string) {

@@ -14,6 +14,7 @@ import {
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/auth-context';
+import { useBotActivity } from '@/hooks/use-bot-activity';
 
 export function BrandMark() {
   return (
@@ -40,6 +41,7 @@ interface SidebarProps {
 export function Sidebar({ className, onNavigate, isMobile }: SidebarProps) {
   const pathname = usePathname();
   const { user, perfil } = useAuth();
+  const { isOperative, loading: loadingActivity } = useBotActivity();
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
@@ -135,16 +137,15 @@ export function Sidebar({ className, onNavigate, isMobile }: SidebarProps) {
       {/* Footer / Bot WhatsApp Operational Status */}
       <div className="mt-auto p-4">
         <div className="border-t border-sidebar-border pt-4">
-          <div className="flex items-start gap-3 rounded-md bg-sidebar-accent/65 p-3.5">
+          <div className={cn("flex items-start gap-3 rounded-md p-3.5", isOperative ? "bg-sidebar-accent/65" : "bg-muted/10")}>
             <div className="relative mt-0.5">
-              <Bot className="size-5 text-sidebar-accent-foreground" strokeWidth={1.8} />
-              <span className="live-pulse absolute -right-1 -top-1 size-2.5 rounded-full border-2 border-sidebar-accent bg-success" />
+              <Bot className={cn("size-5", isOperative ? "text-sidebar-accent-foreground" : "text-muted-foreground")} strokeWidth={1.8} />
+              {isOperative && <span className="live-pulse absolute -right-1 -top-1 size-2.5 rounded-full border-2 border-sidebar-accent bg-success" />}
             </div>
             <div>
-              <p className="text-xs font-bold text-sidebar-accent-foreground">Bot WhatsApp</p>
-              <p className="mt-1 text-[11px] font-semibold text-success">Operativo</p>
-              <p className="mt-1 text-[11px] leading-4 text-sidebar-foreground/55">
-                Atención comercial automatizada activa 24/7
+              <p className={cn("text-xs font-bold", isOperative ? "text-sidebar-accent-foreground" : "text-muted-foreground")}>Bot WhatsApp</p>
+              <p className={cn("mt-1 text-[11px] font-semibold", isOperative ? "text-success" : "text-muted-foreground")}>
+                {loadingActivity ? 'Cargando...' : isOperative ? 'Operativo' : 'Sin actividad reciente'}
               </p>
             </div>
           </div>

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { MessageCircleMore, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { BrandMark } from './sidebar';
+import { useBotActivity } from '@/hooks/use-bot-activity';
+import { cn } from '@/lib/utils';
 
 interface NavbarProps {
   onMenuToggle?: () => void;
@@ -13,11 +15,12 @@ interface NavbarProps {
 export function Navbar({ onMenuToggle }: NavbarProps) {
   const router = useRouter();
   const { user, perfil, empresa, signOut } = useAuth();
+  const { isOperative, loading: loadingActivity } = useBotActivity();
 
-  const tenantName = empresa?.name || 'Ceibo AI Tech Solutions';
+  const tenantName = empresa?.name || 'Cargando...';
   const tenantPlan = (empresa?.plan || 'enterprise').toUpperCase();
-  const userName = perfil?.full_name || 'Gonzalo Vicente';
-  const userEmail = user?.email || 'gonzalo@ceibo.ai';
+  const userName = perfil?.full_name || '';
+  const userEmail = user?.email || '';
 
   const userInitials =
     userName
@@ -26,7 +29,7 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
       .map((n) => n[0])
       .join('')
       .slice(0, 2)
-      .toUpperCase() || 'GV';
+      .toUpperCase() || 'AD';
 
   const handleSignOut = async () => {
     try {
@@ -64,10 +67,10 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
             </span>
           </div>
           <div className="mt-0.5 hidden items-center gap-1.5 text-[11px] text-muted-foreground sm:flex">
-            <MessageCircleMore className="size-3.5 text-success" />
-            <span>+54 9 11 5482-0916</span>
-            <span className="size-1 rounded-full bg-border" />
-            <span className="font-semibold text-success">Conectado</span>
+            <MessageCircleMore className={cn("size-3.5", isOperative ? "text-success" : "text-muted-foreground")} />
+            <span className={cn("font-semibold", isOperative ? "text-success" : "text-muted-foreground")}>
+              {loadingActivity ? 'Cargando...' : isOperative ? 'Operativo' : 'Sin actividad reciente'}
+            </span>
           </div>
         </div>
 
