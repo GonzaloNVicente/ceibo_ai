@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Ceibo AI - Authoritative Mock Data & Analytics Calculations
  * Preloaded fixtures for Tenant A ("Ceibo AI Tech Solutions") and Tenant B ("Rival Retail Corp").
  */
@@ -35,7 +35,7 @@ export const MOCK_USERS: MockUserAccount[] = [
     perfil: {
       id: 'user-001',
       empresa_id: MOCK_TENANTS.TENANT_A.id,
-      full_name: 'Sofía Rodríguez',
+      full_name: 'SofÃ­a RodrÃ­guez',
       role: 'admin',
       email: 'admin@ceibo.ai',
     },
@@ -59,7 +59,7 @@ export const MOCK_USERS: MockUserAccount[] = [
     perfil: {
       id: 'user-003',
       empresa_id: MOCK_TENANTS.TENANT_B.id,
-      full_name: 'Carlos Gómez',
+      full_name: 'Carlos GÃ³mez',
       role: 'admin',
       email: 'carlos@rival.com',
     },
@@ -103,15 +103,15 @@ export const MOCK_ANALYTICS: ChatAnalytics[] = [
 
 const REALISTIC_NAMES = [
   'Constructora Del Sur SRL',
-  'Ferretería López',
-  'Corralón Norte S.A.',
-  'María Fernanda Ruiz',
+  'FerreterÃ­a LÃ³pez',
+  'CorralÃ³n Norte S.A.',
+  'MarÃ­a Fernanda Ruiz',
   'Juan Carlos Medina',
-  'Hermanos González e Hijos',
+  'Hermanos GonzÃ¡lez e Hijos',
   'Arquitectura Moderna Estudio',
   'Materiales San Justo',
-  'Roberto Sánchez',
-  'Lucía Fernández',
+  'Roberto SÃ¡nchez',
+  'LucÃ­a FernÃ¡ndez',
 ];
 
 const QUERY_TYPES = [
@@ -205,7 +205,7 @@ export const MOCK_CHAT_MESSAGES: ChatMessage[] = MOCK_SESSIONS.flatMap((lead) =>
     id: `${lead.id}-m2`,
     session_id: lead.id,
     empresa_id: lead.empresa_id,
-    message_text: `¡Hola! Soy el asistente virtual de la empresa. ¿Me podrías detallar un poco más tu consulta?`,
+    message_text: `Â¡Hola! Soy el asistente virtual de la empresa. Â¿Me podrÃ­as detallar un poco mÃ¡s tu consulta?`,
     sender_type: 'bot',
     created_at: new Date(sessionStart.getTime() + 1000 * 5).toISOString(),
   });
@@ -223,7 +223,7 @@ export const MOCK_CHAT_MESSAGES: ChatMessage[] = MOCK_SESSIONS.flatMap((lead) =>
       id: `${lead.id}-m4`,
       session_id: lead.id,
       empresa_id: lead.empresa_id,
-      message_text: `Entendido. Estoy derivando tu consulta a un representante comercial. En breve te contactarán.`,
+      message_text: `Entendido. Estoy derivando tu consulta a un representante comercial. En breve te contactarÃ¡n.`,
       sender_type: 'bot',
       created_at: new Date(sessionStart.getTime() + 1000 * 32).toISOString(),
     });
@@ -232,7 +232,7 @@ export const MOCK_CHAT_MESSAGES: ChatMessage[] = MOCK_SESSIONS.flatMap((lead) =>
       id: `${lead.id}-m3`,
       session_id: lead.id,
       empresa_id: lead.empresa_id,
-      message_text: `Quería saber si tienen stock del producto.`,
+      message_text: `QuerÃ­a saber si tienen stock del producto.`,
       sender_type: 'user',
       created_at: new Date(sessionStart.getTime() + 1000 * 30).toISOString(),
     });
@@ -240,7 +240,7 @@ export const MOCK_CHAT_MESSAGES: ChatMessage[] = MOCK_SESSIONS.flatMap((lead) =>
       id: `${lead.id}-m4`,
       session_id: lead.id,
       empresa_id: lead.empresa_id,
-      message_text: `¡Sí, tenemos stock disponible! Podés pasar por la sucursal o hacer el pedido online.`,
+      message_text: `Â¡SÃ­, tenemos stock disponible! PodÃ©s pasar por la sucursal o hacer el pedido online.`,
       sender_type: 'bot',
       created_at: new Date(sessionStart.getTime() + 1000 * 32).toISOString(),
     });
@@ -250,6 +250,6 @@ export const MOCK_CHAT_MESSAGES: ChatMessage[] = MOCK_SESSIONS.flatMap((lead) =>
 });
 
 export const MOCK_DOCUMENTS: RecordManagerDocument[] = [
-  { id: 2, created_at: '2026-09-21T18:22:35.395Z', google_drive_file_id: '1TL82sw1Y8hUSj...', hash: '2da08c87...', document_title: 'catalogo_ficticio_corralon.xlsx', data_type: 'tabular', schema: '["C�digo","Producto","Categor�a","Unidad","Precio ARS","Stock","Marca"]', empresa_id: MOCK_TENANTS.TENANT_A.id },
+  { id: 2, created_at: '2026-09-21T18:22:35.395Z', google_drive_file_id: '1TL82sw1Y8hUSj...', hash: '2da08c87...', document_title: 'catalogo_ficticio_corralon.xlsx', data_type: 'tabular', schema: '["Código","Producto","Categoría","Unidad","Precio ARS","Stock","Marca"]', empresa_id: MOCK_TENANTS.TENANT_A.id },
   { id: 4, created_at: '2026-09-21T19:33:44.003Z', google_drive_file_id: '14ad93tMFOIF...', hash: '1ddeb87...', document_title: 'reglas_negocio_corralon.pdf', data_type: 'unstructured', schema: null, empresa_id: MOCK_TENANTS.TENANT_A.id }
 ];
