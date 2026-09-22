@@ -3,7 +3,7 @@
  * Preloaded fixtures for Tenant A ("Ceibo AI Tech Solutions") and Tenant B ("Rival Retail Corp").
  */
 
-import { Empresa, Perfil, ChatAnalytics, ChatAnalyticsRaw, ChatSession, SummaryMetrics, ChatMessage } from './types';
+import { Empresa, Perfil, ChatAnalytics, ChatAnalyticsRaw, ChatSession, SummaryMetrics, ChatMessage, RecordManagerDocument } from './types';
 
 export const MOCK_TENANTS: Record<string, Empresa> = {
   TENANT_A: {
@@ -248,3 +248,8 @@ export const MOCK_CHAT_MESSAGES: ChatMessage[] = MOCK_SESSIONS.flatMap((lead) =>
 
   return messages;
 });
+
+export const MOCK_DOCUMENTS: RecordManagerDocument[] = [
+  { id: 2, created_at: '2026-09-21T18:22:35.395Z', google_drive_file_id: '1TL82sw1Y8hUSj...', hash: '2da08c87...', document_title: 'catalogo_ficticio_corralon.xlsx', data_type: 'tabular', schema: '["Código","Producto","Categoría","Unidad","Precio ARS","Stock","Marca"]', empresa_id: MOCK_TENANTS.TENANT_A.id },
+  { id: 4, created_at: '2026-09-21T19:33:44.003Z', google_drive_file_id: '14ad93tMFOIF...', hash: '1ddeb87...', document_title: 'reglas_negocio_corralon.pdf', data_type: 'unstructured', schema: null, empresa_id: MOCK_TENANTS.TENANT_A.id }
+];

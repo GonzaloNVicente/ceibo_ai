@@ -12,6 +12,7 @@ import {
   MockUserAccount,
   MOCK_SESSIONS,
   MOCK_CHAT_MESSAGES,
+  MOCK_DOCUMENTS,
 } from './mock-data';
 import { Empresa, Perfil, ChatAnalytics, ChatSession, ChatMessage } from './types';
 
@@ -235,6 +236,8 @@ export function createMockSupabaseEngine(
             rows = [...sessionsDataset];
           } else if (table === 'n8n_chat_histories') {
             rows = [...chatMessagesDataset];
+          } else if (table === 'record_manager') {
+            rows = [...MOCK_DOCUMENTS];
           } else {
             return resolve({ data: null, error: { message: `Table '${table}' not found` } });
           }
@@ -245,7 +248,7 @@ export function createMockSupabaseEngine(
           if (!userEmpresaId) {
             rows = [];
           } else {
-            if (table === 'chat_analytics_daily' || table === 'chat_sessions' || table === 'n8n_chat_histories') {
+            if (table === 'chat_analytics_daily' || table === 'chat_sessions' || table === 'n8n_chat_histories' || table === 'record_manager') {
               rows = rows.filter((r) => r.empresa_id === userEmpresaId);
             } else if (table === 'empresas') {
               rows = rows.filter((r) => r.id === userEmpresaId);

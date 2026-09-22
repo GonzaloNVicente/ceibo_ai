@@ -14,6 +14,7 @@ import {
   ChatAnalyticsRaw,
   ChatMessage,
   ChatSession,
+  RecordManagerDocument,
 } from './types';
 import { calculateSummaryMetrics, MOCK_TENANTS } from './mock-data';
 
@@ -119,6 +120,20 @@ export function createTenantScopedClient(supabaseClient: any): TenantAnalyticsCl
 
     async getSessions(): Promise<ChatSession[]> {
       return this.getLeads();
+    },
+
+    async getKnowledgeDocuments(): Promise<RecordManagerDocument[]> {
+      const { data, error } = await supabaseClient
+        .from('record_manager')
+        .select('*')
+        .eq('empresa_id', this.empresaId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching knowledge documents:', error);
+        throw error;
+      }
+      return data || [];
     },
 
     async assignSession(sessionId: string): Promise<ChatSession> {

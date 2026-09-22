@@ -102,6 +102,17 @@ export interface ChartDataPoint {
   horasAhorradas: number;
 }
 
+export interface RecordManagerDocument {
+  id: number;
+  created_at: string;
+  google_drive_file_id: string | null;
+  hash: string | null;
+  document_title: string;
+  data_type: 'tabular' | 'unstructured';
+  schema: string | null;
+  empresa_id: string;
+}
+
 export interface TenantAnalyticsClient {
   empresaId: string;
   getSession(): Promise<UserTenantSession | null>;
@@ -109,6 +120,7 @@ export interface TenantAnalyticsClient {
   getSummaryMetrics(): Promise<SummaryMetrics>;
   getLeads(): Promise<ChatSession[]>;
   getSessions(): Promise<ChatSession[]>;
+  getKnowledgeDocuments(): Promise<RecordManagerDocument[]>;
   assignSession(sessionId: string): Promise<ChatSession>;
   resolveSession(sessionId: string): Promise<ChatSession>;
   sendHumanMessage(sessionId: string, text: string): Promise<ChatMessage>;

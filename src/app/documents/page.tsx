@@ -24,46 +24,34 @@ import {
   FileSpreadsheet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-type DocumentStatus = 'uploaded' | 'processing' | 'ready' | 'error';
-
-interface KnowledgeDocument {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  status: DocumentStatus;
-  uploaded_at: string;
-}
+import { useEffect } from 'react';
+import { useAuth } from '@/contexts/auth-context';
+import { createTenantScopedClient } from '@/lib/supabase/tenant-client';
+import { createClient } from '@/lib/supabase/client';
+import { RecordManagerDocument } from '@/lib/supabase/types';
 
 export default function DocumentsPage() {
+  const { user, perfil } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
-  const [documents, setDocuments] = useState<KnowledgeDocument[]>([
-    {
-      id: 'doc-1',
-      name: 'Lista_Precios_Mayorista_Septiembre.pdf',
-      size: 2500000,
-      type: 'application/pdf',
-      status: 'ready',
-      uploaded_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), // 2 days ago
-    },
-    {
-      id: 'doc-2',
-      name: 'Catalogo_Pinturas_2026.pdf',
-      size: 15400000,
-      type: 'application/pdf',
-      status: 'ready',
-      uploaded_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-    },
-    {
-      id: 'doc-3',
-      name: 'Preguntas_Frecuentes_Envios.docx',
-      size: 125000,
-      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      status: 'ready',
-      uploaded_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString(),
-    }
-  ]);
+  const [documents, setDocuments] = useState<RecordManagerDocument[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user || !perfil?.empresa_id) return;
+    const loadDocuments = async () => {
+      try {
+        const supabase = createClient();
+        const client = createTenantScopedClient(supabase);
+        const docs = await client.getKnowledgeDocuments();
+        setDocuments(docs);
+      } catch (err) {
+        console.error('Error loading documents', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadDocuments();
+  }, [user, perfil?.empresa_id]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -90,29 +78,11 @@ export default function DocumentsPage() {
   };
 
   const handleFiles = (files: File[]) => {
-    const newDocs: KnowledgeDocument[] = files.map(file => ({
-      id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      status: 'processing',
-      uploaded_at: new Date().toISOString(),
-    }));
-
-    setDocuments(prev => [...newDocs, ...prev]);
-
-    // Simulate processing time
-    setTimeout(() => {
-      setDocuments(prev => prev.map(doc => 
-        newDocs.find(nd => nd.id === doc.id) 
-          ? { ...doc, status: 'ready' } 
-          : doc
-      ));
-    }, 3000);
+    alert('La subida de archivos se realiza automáticamente desde n8n/Google Drive. La funcionalidad de drag & drop está deshabilitada por ahora.');
   };
 
   const handleDelete = (id: string) => {
-    setDocuments(prev => prev.filter(doc => doc.id !== id));
+    setDocuments(prev => prev.filter(doc => doc.id.toString() !== id));
   };
 
   const formatBytes = (bytes: number) => {
@@ -123,7 +93,7 @@ export default function DocumentsPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const getStatusBadge = (status: DocumentStatus) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'processing':
         return (
@@ -284,26 +254,26 @@ export default function DocumentsPage() {
                         <div className="flex items-center gap-2.5">
                           <FileText className="size-4 text-primary shrink-0" />
                           <div className="min-w-0">
-                            <span className="font-semibold text-foreground truncate block max-w-[180px] sm:max-w-[280px]" title={doc.name}>
-                              {doc.name}
+                            <span className="font-semibold text-foreground truncate block max-w-[180px] sm:max-w-[280px]" title={doc.document_title}>
+                              {doc.document_title}
                             </span>
                             <span className="text-[11px] text-muted-foreground sm:hidden font-mono">
-                              {formatBytes(doc.size)}
+                              {doc.data_type === 'tabular' ? 'Excel/CSV' : 'PDF/Word'}
                             </span>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground font-mono hidden sm:table-cell">
-                        {formatBytes(doc.size)}
+                        {doc.data_type === 'tabular' ? 'Excel/CSV' : 'PDF/Word'}
                       </TableCell>
                       <TableCell>
-                        {getStatusBadge(doc.status)}
+                        {getStatusBadge('ready')}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button 
                           variant="ghost" 
                           size="icon-sm"
-                          onClick={() => handleDelete(doc.id)}
+                          onClick={() => handleDelete(doc.id.toString())}
                           className="hover:text-destructive hover:bg-destructive/10 text-muted-foreground"
                           title="Eliminar documento"
                         >
