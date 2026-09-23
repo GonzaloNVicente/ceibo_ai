@@ -32,6 +32,10 @@ export interface ChatAnalytics {
   derivadas_humano: number;
   total_consultas: number;
   horas_ahorradas: number; // calculated as resueltas_ia * 0.2
+  pedidos_count: number;
+  presupuestos_count: number;
+  reclamos_count: number;
+  valor_estimado: number;
 }
 
 export type ChatAnalyticsDaily = ChatAnalytics;
@@ -93,6 +97,10 @@ export interface SummaryMetrics {
   totalHuman: number;
   horasAhorradas: number;
   tasaResolucionIA: number;
+  pedidosCount: number;
+  presupuestosCount: number;
+  reclamosCount: number;
+  valorEstimado: number;
 }
 
 export interface ChartDataPoint {

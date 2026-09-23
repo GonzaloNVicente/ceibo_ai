@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Ceibo AI - Authoritative Mock Data & Analytics Calculations
  * Preloaded fixtures for Tenant A ("Ceibo AI Tech Solutions") and Tenant B ("Rival Retail Corp").
  */
@@ -82,15 +82,24 @@ export function generateMockAnalytics(empresaId: string, baseMultiplier: number,
     const humano = Math.round((18 + Math.cos(i / 3) * 6) * baseMultiplier * weekendFactor);
     // Business standard: 12 minutes (0.2h) per AI resolution
     const horasAhorradas = Math.round(ia * 0.2 * 10) / 10;
+    
+    // Distribute total queries roughly into new categories
+    const pedidos = Math.round((ia + humano) * 0.4);
+    const presupuestos = Math.round((ia + humano) * 0.3);
+    const reclamos = Math.round((ia + humano) * 0.2);
+    const estimatedValue = pedidos * 15000 + presupuestos * 20000;
 
     records.push({
-
       empresa_id: empresaId,
       date: dateStr,
       resueltas_ia: ia,
       derivadas_humano: humano,
       total_consultas: ia + humano,
       horas_ahorradas: horasAhorradas,
+      pedidos_count: pedidos,
+      presupuestos_count: presupuestos,
+      reclamos_count: reclamos,
+      valor_estimado: estimatedValue,
     });
   }
   return records;
@@ -168,11 +177,20 @@ export function calculateSummaryMetrics(rows: ChatAnalytics[] | null | undefined
       totalHuman: 0,
       horasAhorradas: 0,
       tasaResolucionIA: 0,
+      pedidosCount: 0,
+      presupuestosCount: 0,
+      reclamosCount: 0,
+      valorEstimado: 0,
     };
   }
 
   const totalIA = rows.reduce((acc, r) => acc + (Number(r.resueltas_ia) || 0), 0);
   const totalHuman = rows.reduce((acc, r) => acc + (Number(r.derivadas_humano) || 0), 0);
+  const pedidosCount = rows.reduce((acc, r) => acc + (Number(r.pedidos_count) || 0), 0);
+  const presupuestosCount = rows.reduce((acc, r) => acc + (Number(r.presupuestos_count) || 0), 0);
+  const reclamosCount = rows.reduce((acc, r) => acc + (Number(r.reclamos_count) || 0), 0);
+  const valorEstimado = rows.reduce((acc, r) => acc + (Number(r.valor_estimado) || 0), 0);
+  
   const totalConsultas = totalIA + totalHuman;
   // B2B formula: 12 min per AI-resolved consultation = 0.2 hours
   const rawHoras = totalIA * 0.2;
@@ -185,6 +203,10 @@ export function calculateSummaryMetrics(rows: ChatAnalytics[] | null | undefined
     totalHuman,
     horasAhorradas,
     tasaResolucionIA,
+    pedidosCount,
+    presupuestosCount,
+    reclamosCount,
+    valorEstimado,
   };
 }
 

@@ -89,7 +89,7 @@ async function runAdversarialAudit() {
       resueltas_ia: 0,
       derivadas_humano: 0,
       total_consultas: 0,
-      horas_ahorradas: 0,
+      horas_ahorradas: 0, pedidos_count: 0, presupuestos_count: 0, reclamos_count: 0, valor_estimado: 0,
     };
     const res = calculateSummaryMetrics([row]);
     assert.strictEqual(res.totalConsultas, 0);
@@ -104,7 +104,7 @@ async function runAdversarialAudit() {
       resueltas_ia: 800_000_000,
       derivadas_humano: 200_000_000,
       total_consultas: 1_000_000_000,
-      horas_ahorradas: 160_000_000,
+      horas_ahorradas: 160_000_000, pedidos_count: 0, presupuestos_count: 0, reclamos_count: 0, valor_estimado: 0,
     };
     const res = calculateSummaryMetrics([row]);
     assert.strictEqual(res.totalConsultas, 1_000_000_000);
@@ -121,7 +121,7 @@ async function runAdversarialAudit() {
       resueltas_ia: 17,
       derivadas_humano: 3,
       total_consultas: 20,
-      horas_ahorradas: 3.4,
+      horas_ahorradas: 3.4, pedidos_count: 0, presupuestos_count: 0, reclamos_count: 0, valor_estimado: 0,
     };
     const res = calculateSummaryMetrics([row]);
     assert.strictEqual(res.horasAhorradas, 3.4);

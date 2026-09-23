@@ -142,8 +142,14 @@ export default function DashboardPage() {
       {
         label: 'Derivadas a Humano',
         value: metrics.totalHuman.toLocaleString(),
-        detail: `${humanPercentage}% escaladas a cierre`,
-        note: 'Leads calificados para asesor comercial',
+        detail: (
+          <div className="flex flex-col gap-1 mt-1 text-foreground/80 font-normal">
+            <div className="flex justify-between items-center text-[11px]"><span>Pedidos:</span> <span className="font-bold">{metrics.pedidosCount}</span></div>
+            <div className="flex justify-between items-center text-[11px]"><span>Presupuestos:</span> <span className="font-bold">{metrics.presupuestosCount}</span></div>
+            <div className="flex justify-between items-center text-[11px]"><span>Reclamos:</span> <span className="font-bold">{metrics.reclamosCount}</span></div>
+          </div>
+        ),
+        note: `${humanPercentage}% escaladas a cierre. Leads calificados.`,
         tone: 'ceibo' as const,
       },
     ],
@@ -238,6 +244,22 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Highlighted Income Card */}
+      <section className="mt-6 overflow-hidden rounded-lg border border-success/40 bg-success/5 shadow-sm p-6 relative">
+        <div className="absolute top-0 right-0 p-4 opacity-10">
+          <Sparkles className="w-24 h-24 text-success" />
+        </div>
+        <div className="relative z-10">
+          <p className="font-sans text-sm font-bold text-success/80 uppercase tracking-wider">Valor Estimado en Pipeline</p>
+          <p className="mt-2 font-display text-4xl sm:text-5xl font-bold text-success">
+            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(metrics.valorEstimado)}
+          </p>
+          <p className="font-sans mt-2 max-w-lg text-sm text-muted-foreground">
+            Calculado en tiempo real: cantidad que pidió cada cliente × precio real de tu catálogo.
+          </p>
+        </div>
+      </section>
+
       {/* MetricBand: Unified 4-KPI Card */}
       <section aria-label="Métricas principales" className="mt-6 overflow-hidden rounded-lg border border-border bg-card shadow-panel">
         <div className="grid sm:grid-cols-2 xl:grid-cols-4 xl:divide-x xl:divide-border">
@@ -263,7 +285,7 @@ export default function DashboardPage() {
               >
                 {metric.value}
               </p>
-              <p
+              <div
                 className={`font-sans mt-3 text-xs font-bold ${
                   metric.tone === 'success'
                     ? 'text-success'
@@ -273,7 +295,7 @@ export default function DashboardPage() {
                 }`}
               >
                 {metric.detail}
-              </p>
+              </div>
               <p className="font-sans mt-2 max-w-[27ch] text-[11px] leading-4 text-muted-foreground">
                 {metric.note}
               </p>
