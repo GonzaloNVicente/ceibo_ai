@@ -53,7 +53,7 @@ export default function DocumentsPage() {
   }, [user, perfil?.empresa_id]);
   
   const handleDelete = async (id: string) => {
-    if (!confirm('Â¿Eliminar este documento? Esta acciÃ³n no se puede deshacer.')) return;
+    if (!confirm('¿Eliminar este documento? Esta acción no se puede deshacer.')) return;
     
     try {
       const supabase = createClient();
@@ -120,7 +120,7 @@ export default function DocumentsPage() {
             Base de Conocimiento
           </h1>
           <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
-            SubÃ­ los catÃ¡logos y listas de precios de tu empresa. La IA los procesa automÃ¡ticamente para responder consultas de clientes con precisiÃ³n tÃ©cnica.
+            Subí los catálogos y listas de precios de tu empresa. La IA los procesa automáticamente para responder consultas de clientes con precisión técnica.
           </p>
         </div>
       </div>
@@ -139,9 +139,9 @@ export default function DocumentsPage() {
               <div className="mx-auto size-12 rounded-md bg-accent text-accent-foreground flex items-center justify-center mb-3 shadow-xs">
                 <UploadCloud className="size-6" />
               </div>
-              <h3 className="text-sm font-bold text-foreground">SincronizaciÃ³n AutomÃ¡tica</h3>
+              <h3 className="text-sm font-bold text-foreground">Sincronización Automática</h3>
               <p className="mt-1.5 max-w-[200px] mx-auto text-xs text-muted-foreground leading-relaxed">
-                La carga de catÃ¡logos se hace automÃ¡ticamente desde Google Drive. Escribinos si necesitÃ¡s agregar o actualizar un documento.
+                La carga de catálogos se hace automáticamente desde Google Drive. Escribinos si necesitás agregar o actualizar un documento.
               </p>
             </div>
             
@@ -149,9 +149,9 @@ export default function DocumentsPage() {
               <div className="flex items-start gap-3">
                 <FileSpreadsheet className="size-4 text-ceibo mt-0.5" />
                 <div>
-                  <h4 className="text-xs font-bold text-foreground">CatÃ¡logo Tabular</h4>
+                  <h4 className="text-xs font-bold text-foreground">Catálogo Tabular</h4>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    DescargÃ¡ la plantilla para el catÃ¡logo de precios y stock.
+                    Descargá la plantilla para el catálogo de precios y stock.
                   </p>
                   <a 
                     href="/plantilla_precios.xlsx" 
@@ -182,16 +182,16 @@ export default function DocumentsPage() {
             {documents.length === 0 ? (
               <div className="text-center py-12 border border-dashed border-border rounded-lg">
                 <FileText className="size-10 text-muted-foreground mx-auto mb-2 opacity-50" />
-                <p className="text-sm text-muted-foreground">No hay documentos cargados todavÃ­a.</p>
+                <p className="text-sm text-muted-foreground">No hay documentos cargados todavía.</p>
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nombre</TableHead>
-                    <TableHead className="hidden sm:table-cell">TamaÃ±o</TableHead>
+                    <TableHead className="hidden sm:table-cell">Tamaño</TableHead>
                     <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">AcciÃ³n</TableHead>
+                    <TableHead className="text-right">Acción</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

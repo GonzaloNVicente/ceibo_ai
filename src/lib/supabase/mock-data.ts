@@ -35,7 +35,7 @@ export const MOCK_USERS: MockUserAccount[] = [
     perfil: {
       id: 'user-001',
       empresa_id: MOCK_TENANTS.TENANT_A.id,
-      full_name: 'SofÃ­a RodrÃ­guez',
+      full_name: 'Sofía Rodríguez',
       role: 'admin',
       email: 'admin@ceibo.ai',
     },
@@ -59,7 +59,7 @@ export const MOCK_USERS: MockUserAccount[] = [
     perfil: {
       id: 'user-003',
       empresa_id: MOCK_TENANTS.TENANT_B.id,
-      full_name: 'Carlos GÃ³mez',
+      full_name: 'Carlos Gómez',
       role: 'admin',
       email: 'carlos@rival.com',
     },
@@ -112,15 +112,15 @@ export const MOCK_ANALYTICS: ChatAnalytics[] = [
 
 const REALISTIC_NAMES = [
   'Constructora Del Sur SRL',
-  'FerreterÃ­a LÃ³pez',
-  'CorralÃ³n Norte S.A.',
-  'MarÃ­a Fernanda Ruiz',
+  'Ferretería López',
+  'Corralón Norte S.A.',
+  'María Fernanda Ruiz',
   'Juan Carlos Medina',
-  'Hermanos GonzÃ¡lez e Hijos',
+  'Hermanos González e Hijos',
   'Arquitectura Moderna Estudio',
   'Materiales San Justo',
-  'Roberto SÃ¡nchez',
-  'LucÃ­a FernÃ¡ndez',
+  'Roberto Sánchez',
+  'Lucía Fernández',
 ];
 
 const QUERY_TYPES = [
@@ -227,7 +227,7 @@ export const MOCK_CHAT_MESSAGES: ChatMessage[] = MOCK_SESSIONS.flatMap((lead) =>
     id: `${lead.id}-m2`,
     session_id: lead.id,
     empresa_id: lead.empresa_id,
-    message_text: `Â¡Hola! Soy el asistente virtual de la empresa. Â¿Me podrÃ­as detallar un poco mÃ¡s tu consulta?`,
+    message_text: `¡Hola! Soy el asistente virtual de la empresa. ¿Me podrías detallar un poco más tu consulta?`,
     sender_type: 'bot',
     created_at: new Date(sessionStart.getTime() + 1000 * 5).toISOString(),
   });
@@ -245,7 +245,7 @@ export const MOCK_CHAT_MESSAGES: ChatMessage[] = MOCK_SESSIONS.flatMap((lead) =>
       id: `${lead.id}-m4`,
       session_id: lead.id,
       empresa_id: lead.empresa_id,
-      message_text: `Entendido. Estoy derivando tu consulta a un representante comercial. En breve te contactarÃ¡n.`,
+      message_text: `Entendido. Estoy derivando tu consulta a un representante comercial. En breve te contactarán.`,
       sender_type: 'bot',
       created_at: new Date(sessionStart.getTime() + 1000 * 32).toISOString(),
     });
@@ -254,7 +254,7 @@ export const MOCK_CHAT_MESSAGES: ChatMessage[] = MOCK_SESSIONS.flatMap((lead) =>
       id: `${lead.id}-m3`,
       session_id: lead.id,
       empresa_id: lead.empresa_id,
-      message_text: `QuerÃ­a saber si tienen stock del producto.`,
+      message_text: `Quería saber si tienen stock del producto.`,
       sender_type: 'user',
       created_at: new Date(sessionStart.getTime() + 1000 * 30).toISOString(),
     });
@@ -262,7 +262,7 @@ export const MOCK_CHAT_MESSAGES: ChatMessage[] = MOCK_SESSIONS.flatMap((lead) =>
       id: `${lead.id}-m4`,
       session_id: lead.id,
       empresa_id: lead.empresa_id,
-      message_text: `Â¡SÃ­, tenemos stock disponible! PodÃ©s pasar por la sucursal o hacer el pedido online.`,
+      message_text: `¡Sí, tenemos stock disponible! Podés pasar por la sucursal o hacer el pedido online.`,
       sender_type: 'bot',
       created_at: new Date(sessionStart.getTime() + 1000 * 32).toISOString(),
     });
