@@ -149,6 +149,17 @@ export default function ChatsPage() {
         last_message_at: newMsg.created_at,
         bot_paused: true
       } : l));
+
+      // Reenvío del mensaje al webhook real de WhatsApp
+      const wpResponse = await fetch('/api/send-whatsapp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: selectedLead.customer_phone, text })
+      });
+
+      if (!wpResponse.ok) {
+        toast.error('El mensaje se guardó pero no se pudo enviar por WhatsApp — reintentá', { duration: 6000 });
+      }
     } catch (err: any) {
       console.error(err);
       toast.error('Error enviando mensaje: ' + err.message);
