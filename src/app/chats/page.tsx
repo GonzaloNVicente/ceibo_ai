@@ -158,7 +158,7 @@ export default function ChatsPage() {
       });
 
       if (!wpResponse.ok) {
-        toast.error('El mensaje se guardó pero no se pudo enviar por WhatsApp — reintentá', { duration: 6000 });
+        toast.error('El mensaje se guardó pero no se pudo enviar por WhatsApp — reintentá');
       }
     } catch (err: any) {
       console.error(err);
