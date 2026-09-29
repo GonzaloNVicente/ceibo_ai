@@ -6,10 +6,10 @@ Contexto de proyecto para cualquier sesión de Claude Code que trabaje en este r
 
 Ceibo AI es un asistente de ventas por WhatsApp basado en IA para corralones y distribuidoras de materiales de construcción en Argentina (proyecto académico de Universidad Austral que ganó el ILAN 2025, ahora en proceso de profesionalizarse como producto vendible). Fundador: Gonzalo Vicente.
 
-**Este repo (`ceibo_ai`) es solo el frontend** — un dashboard Next.js para que el dueño del corralón vea métricas, leads e conversaciones de su asistente de IA. La lógica real del bot (RAG, clasificación, WhatsApp, memoria de conversación) vive **fuera de este repo**, en workflows de n8n, y escribe/lee de una base Supabase compartida.
+**Este repo (`ceibo_ai`) es solo el frontend** — un dashboard Next.js para que el dueño del corralón vea métricas, leads y conversaciones de su asistente de IA. La lógica real del bot (RAG, clasificación, WhatsApp, memoria de conversación) vive **fuera de este repo**, en workflows de n8n, y escribe/lee de una base Supabase compartida.
 
 ```
-WhatsApp Business API → n8n (orquestador + agente IA + RAG) → Supabase (ceibo-test) → este frontend (Next.js)
+WhatsApp Business API → n8n (1 workflow POR CLIENTE: agente IA + RAG) → Supabase (ceibo-test) → este frontend (Next.js)
 ```
 
 ## Stack
@@ -17,64 +17,123 @@ WhatsApp Business API → n8n (orquestador + agente IA + RAG) → Supabase (ceib
 - Next.js 14 (App Router) + TypeScript, Tailwind CSS
 - Supabase (`@supabase/ssr`, `@supabase/supabase-js`) para auth, DB y storage
 - Recharts para gráficos
-- Arquitectura dual: si no hay `.env.local` con credenciales reales, la app cae automáticamente a un **cliente mock** en memoria (`src/lib/supabase/mock-client.ts`, `mock-data.ts`) — útil para iterar UI rápido, pero hay que tener presente que **cualquier fetch real a Supabase que falle en silencio puede quedar enmascarado por este fallback**. Ya hubo bugs así (ver "Bugs ya encontrados y resueltos").
+- Arquitectura dual: si no hay credenciales reales en `.env.local`, la app cae a un **cliente mock** en memoria (`src/lib/supabase/mock-client.ts`, `mock-data.ts`). Ahora el navbar muestra un badge **MODO DEMO** cuando esto ocurre (`isLiveConfigured()` en `src/lib/supabase/client.ts`). Igual: un fetch real que falla en silencio puede quedar enmascarado — los banners de error de Dashboard, Inbox y Chats ya están renderizados (verificado).
 
 ## Supabase — proyecto real
 
 - Proyecto: **`ceibo-test`**, ref `lnoxajdcyrseeymlsttl`, región `ca-central-1`.
-- Hay un proyecto viejo llamado **"Prueba n8n"** (ref `wvskjqgnsqbvmfdaweqe`, ahora INACTIVE) que NO es el que usa este frontend — es un resabio de una etapa anterior del proyecto, antes de que existiera el dashboard. Si algo parece no coincidir con lo que ves en n8n, chequeá a qué proyecto apunta la credencial de Supabase en el nodo de n8n correspondiente.
-- Credenciales reales viven en `.env.local` (gitignored, nunca en este repo) y en el gestor de credenciales de n8n — nunca hardcodeadas acá.
+- Hay un proyecto viejo **"Prueba n8n"** (ref `wvskjqgnsqbvmfdaweqe`, INACTIVE) que NO es el que usa este frontend. Si algo no coincide con n8n, chequeá a qué proyecto apunta la credencial del nodo.
+- Credenciales reales viven en `.env.local` (gitignored) y en el gestor de credenciales de n8n — nunca hardcodeadas acá. Variables relevantes: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (**solo servidor**, nunca `NEXT_PUBLIC_`), `CEIBO_LEGACY_EMPRESA_ID`, `CEIBO_HUMAN_MSG_WEBHOOK_URL/SECRET` (fallback, ver abajo).
 
 ### Tablas (schema multi-tenant)
 
-Todas las tablas de negocio tienen columna `empresa_id` (uuid) para aislar datos entre clientes, con RLS activado:
+Todas las tablas de negocio tienen `empresa_id` (uuid) y RLS activado:
 
-- `empresas` — tenants/clientes de Ceibo AI
-- `perfiles` — perfiles de usuario, vinculados 1:1 a `auth.users` vía `id`, con `empresa_id` y `role`
-- `chat_analytics` — **una fila por mensaje/consulta individual** (no agregado): `customer_phone`, `query_type`, `query_text`, `related_product_id`, `bot_response`, `is_escalated`, `resolution_status`, `customer_name`, `empresa_id`. Tiene `empresa_id NOT NULL` con **default** seteado al tenant de prueba (Ceibo AI Tech Solutions) como red de seguridad.
-- `chat_analytics_daily` — **vista** que agrega `chat_analytics` por día y `empresa_id` (total consultas, resueltas por IA, derivadas a humano, horas ahorradas ≈ resueltas_ia × 0.2). El Dashboard lee de esta vista, no de la tabla base.
-- `n8n_chat_histories` — memoria de conversación de LangChain (`session_id`, `message` jsonb), poblada automáticamente por el nodo "Postgres Chat Memory" de n8n. También tiene `empresa_id NOT NULL` con default — el nodo de LangChain no tiene forma de setear esa columna manualmente, así que el default es obligatorio, no opcional.
-- `documents` — vector store del RAG (`content`, `metadata`, `embedding vector`)
-- `record_manager` / `tabular_document_rows` — metadata e ingestión de documentos/catálogos
+- `empresas` — tenants/clientes. Hoy: "Ceibo AI Tech Solutions" (`a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11`, enterprise, tenant de prueba/actual) y "Mi Empresa Real" (`197b1a6c-…`, starter, sin tráfico).
+- `perfiles` — usuarios, 1:1 con `auth.users` vía `id`, con `empresa_id` y `role`. **Esto es lo que decide qué empresa ve cada usuario al loguearse.**
+- `chat_sessions` — **una fila por (empresa, teléfono)** (índice único `chat_sessions_empresa_phone_uidx`). Es el lead/conversación que alimenta Inbox y Chats. `query_type` y `is_escalated` son "pegajosos" (solo suben, salvo `resolve_chat_session()`).
+- `chat_analytics` — **una fila por consulta** (a propósito: el dashboard cuenta consultas), enlazada a la sesión por `session_id`. Incluye `estimated_amount`.
+- `chat_analytics_daily` — **vista** que agrega `chat_analytics` por día y empresa. El Dashboard lee de acá. Tiene `security_invoker=true` (ver "Seguridad").
+- `n8n_chat_histories` — mensajes de la conversación (`sender_type`: user | bot | human_agent), `session_id` = `chat_sessions.id`. Solo lo escriben las RPC.
+- `n8n_agent_memory` — memoria del agente LangChain, la escribe el nodo "Postgres Chat Memory". **No tiene `empresa_id`**: por eso la clave de sesión va prefijada `"<empresa_id>:<telefono>"`.
+- `documents` (vector store del RAG), `record_manager`, `tabular_document_rows` (catálogos/precios) — todas con `empresa_id`.
+- `empresa_integrations` — webhook + secreto de envío de mensajes humanos **por empresa**. RLS sin políticas: solo `service_role` la lee (desde el servidor de Next.js).
 
-RLS usa dos funciones `SECURITY DEFINER` equivalentes y redundantes (`current_user_empresa_id()` y `get_user_empresa_id()`, creadas en pasadas distintas) — ambas funcionan, no hace falta unificarlas salvo que moleste la duplicación.
+### RPC (todas explícitas en `empresa_id`)
 
-Hay un rol de solo lectura, `ceibo_readonly`, con `SELECT` en todo el schema `public` — pensado para los nodos de n8n que solo consultan (nunca escriben), como red de seguridad adicional.
+- `chat_open_turn(phone, name, text, empresa_id)` → upsert de la sesión + guarda el mensaje del usuario. **`empresa_id` es obligatorio** (sin default). Solo `service_role`.
+- `chat_close_turn(session_id, bot_text, query_text, query_type, resolution_status, is_escalated, related_product_id, estimated_amount)` → inserta la consulta en `chat_analytics`, el mensaje del bot y actualiza la sesión. Solo `service_role`.
+- `assign_chat_session`, `resolve_chat_session`, `send_human_message` → las usa el front (respetan RLS).
+- `match_documents(query_embedding, match_count, filter)` → **el filtro debe incluir `empresa_id`** o falla; filtra por la columna `documents.empresa_id`.
+- `delete_knowledge_document`, `update_empresa_settings` → SECURITY DEFINER, requieren sesión (sin acceso `anon`).
 
-### Pendiente de decisión: duplicados en `chat_analytics`
+RLS usa `current_user_empresa_id()` y `get_user_empresa_id()` (equivalentes y redundantes; ambas las usan políticas, no revocarles `authenticated`).
 
-Hoy `chat_analytics` inserta **una fila por mensaje**, lo que genera leads duplicados en el frontend cuando un mismo cliente manda varios mensajes. Dirección acordada (no implementada todavía): agregar `UNIQUE` en `customer_phone` y cambiar el nodo de n8n a modo **upsert** (insert-or-update por `customer_phone`), en vez de una función RPC o un link explícito por `session_id` — más simple, y `n8n_chat_histories` ya comparte el mismo `customer_phone` como clave natural para cruzar ambas tablas desde el frontend.
+## Modelo multi-tenant (decisión de arquitectura)
+
+**Un workflow de n8n por cliente**, nunca uno compartido: cada cliente tiene su número de WhatsApp, credenciales, catálogo y webhooks propios. Todos escriben en el mismo Supabase, aislados por `empresa_id` + RLS.
+
+- El `empresa_id` de cada workflow vive en **un solo lugar: el nodo `CONFIG`** (Set) al inicio. Al duplicar el workflow para otro cliente se cambia solo ese valor.
+- Ya **no hay defaults de tenant** en `chat_sessions`, `chat_analytics`, `n8n_chat_histories`: un `empresa_id` faltante falla en voz alta en vez de caer en silencio en el tenant de prueba.
+- **Excepción pendiente:** `documents`, `record_manager` y `tabular_document_rows` **conservan** el default `a0eebc99-…` porque la ingesta (workflow "HOLY RAG - Ingesta" y la subida desde `/documents`) todavía no pasa el `empresa_id` explícito. Hay que resolverlo antes de ingestar el catálogo de un segundo cliente.
+- Envío de mensajes humanos: `src/app/api/send-whatsapp/route.ts` busca el webhook en `empresa_integrations` según la empresa de la sesión, valida que el teléfono pertenezca a una conversación de esa empresa, y rechaza (503) si la empresa no tiene webhook. Solo para `CEIBO_LEGACY_EMPRESA_ID` se usa el fallback de variables de entorno.
+
+### Alta de un cliente nuevo (checklist)
+
+1. Insertar la fila en `empresas`.
+2. Crear el usuario por el **flujo real de Supabase Auth** (invitación/signup), no por SQL directo (ver bug 1), y su `perfil` con el `empresa_id`.
+3. Duplicar el workflow "HOLY RAG - Conversación copy", cambiar `empresa_id` en `CONFIG`, conectar su número de WhatsApp (credencial y `phoneNumberId` de los nodos de envío).
+4. Crear un **rol de solo lectura propio** para ese cliente (como `ceibo_readonly`, pero con políticas atadas a su `empresa_id`) y una credencial de n8n que lo use en los nodos donde el LLM escribe SQL (`query_tabular_rows`, `Get datasets from record_manager`, `Execute a SQL query2`). Hoy `ceibo_readonly` solo ve el tenant de prueba (políticas hardcodeadas): con otro cliente **no sirve tal cual**.
+5. Cargar la fila en `empresa_integrations` (URL del webhook "Enviar mensaje humano" de SU workflow + un secreto propio, y ese mismo secreto en su nodo "Verificar secreto compartido").
+6. Ingestar su catálogo con `empresa_id` correcto.
 
 ## n8n
 
-- El bot corre en n8n Cloud (`ceibocc.app.n8n.cloud`). Workflow principal: **"HOLY RAG - Conversación copy"** (hay una versión vieja "HOLY RAG - Conversación" sin el fix de multi-tenant, no usar). Ingesta de documentos: **"HOLY RAG - Ingesta"**.
-- **Blocker recurrente conocido: límite de ejecuciones del plan de n8n Cloud.** Si dejan de llegar mensajes/datos nuevos sin motivo aparente, lo primero a chequear es el uso del plan en n8n (Settings → Usage), no asumir que es un bug de código.
+- Corre en n8n Cloud (`ceibocc.app.n8n.cloud`). Workflow principal: **"HOLY RAG - Conversación copy"** (ID `ZMrhkzMWbCpxBMTd`; la versión "HOLY RAG - Conversación" sin el fix multi-tenant NO usar). Ingesta: **"HOLY RAG - Ingesta"**. Error handler: "Error Handler- HOLY RAG".
+- El workflow historial de n8n guarda versiones: antes de cambios grandes, anotar el `versionId` para poder volver (`restore_workflow_version`).
+- **Blocker recurrente conocido: límite de ejecuciones del plan de n8n Cloud.** Si dejan de llegar mensajes/datos sin motivo aparente, chequear primero el uso del plan (Settings → Usage). Con varios clientes en la misma cuenta, todos consumen la misma cuota.
+
+### Reglas al tocar nodos
+
+- Los nodos donde el LLM escribe SQL (`$fromAI('query')`) deben usar una credencial **solo lectura** (RLS por tenant), nunca la de escritura.
+- No interpolar salida del LLM dentro de SQL: usar parámetros (`$1…`) con `queryReplacement`. `Execute a SQL query2` ya está parametrizado.
+- Toda expresión `{{ }}` de n8n debe arrancar con `=`; si no, se trata como texto literal.
+- Si se toca `Execute a SQL query2`, verificar que siga devolviendo `query_type`, `is_escalated`, `resolution_status`, `related_product_id` y `estimated_amount`.
+- El nodo "Supabase Vector Store1" debe conservar el Metadata Filter `empresa_id` (sino `match_documents` falla).
 
 ### Bugs ya encontrados y resueltos (no repetirlos)
 
-1. **Usuario admin creado por SQL directo, no por el flujo real de Supabase Auth** → faltaba `aud = 'authenticated'` en `auth.users` y la fila correspondiente en `auth.identities`. Si en el futuro se crea un usuario a mano por SQL en vez de por signup real, hay que setear ambas cosas o el login falla con "Invalid login credentials" sin pista real del motivo.
-2. **Nodo "Execute a SQL query2" (lookup de SKU) pisaba `query_type`/`is_escalated`/`resolution_status`** al no seleccionarlos explícitamente — la escalación a CRM nunca disparaba. Ya arreglado, pero si se toca ese nodo de nuevo, verificar que la query siga trayendo esos 3 campos.
-3. **Falta el prefijo `=` en expresiones de n8n** (`Execute a SQL query2` y `query_tabular_rows` tenían `{{ ... }}` sin `=` adelante) → n8n las trataba como texto literal, no como expresión evaluada. Cualquier nodo de n8n con `{{ }}` que no arranque con `=` está probablemente roto de la misma forma.
-4. **`Create a row` (insert a `chat_analytics`) no tenía `empresa_id`** → ahora está hardcodeado al tenant de prueba. Si se suma un segundo cliente real, este nodo necesita lógica real para resolver el `empresa_id` correcto, no seguir hardcodeado.
-5. **Dashboard mostraba datos mock indefinidamente sin avisar** cuando el fetch real a Supabase fallaba — el catch solo hacía `console.error` y la UI se quedaba con el estado inicial de mentira. Se agregó un banner de error visible en `src/app/dashboard/page.tsx`. **Las pantallas de Inbox y Chats también tenían este problema** (peor aún: estaban *hardcodeadas* a usar el cliente mock siempre, sin importar sesión real) — ya se corrigió el fetch real, pero last known state es que el banner de error se agregó al estado pero puede no estar renderizado en el JSX de esas dos pantallas. **Verificar antes de asumir que está resuelto.**
+1. **Usuario admin creado por SQL directo** → faltaba `aud = 'authenticated'` en `auth.users` y la fila en `auth.identities`; el login fallaba con "Invalid login credentials" sin pista. Crear usuarios por el flujo real de Auth.
+2. **`Execute a SQL query2` pisaba `query_type`/`is_escalated`/`resolution_status`** al no seleccionarlos → la escalación a CRM nunca disparaba.
+3. **Falta del prefijo `=` en expresiones de n8n** → se trataban como texto literal.
+4. **`empresa_id` hardcodeado/por defecto en la creación de filas** → resuelto: nodo `CONFIG` + parámetro obligatorio en `chat_open_turn`.
+5. **Dashboard/Inbox/Chats mostraban datos mock sin avisar** cuando el fetch real fallaba → banners de error renderizados + badge MODO DEMO.
+6. **Duplicados de leads** (una fila por mensaje) → resuelto con `chat_sessions` (una por empresa+teléfono). **No agregar `UNIQUE(customer_phone)` a `chat_analytics`**: es un log por consulta y rompería las métricas.
+7. **Fuga de datos entre tenants (corregida el 2026-09-29):** la vista `chat_analytics_daily` corría como su dueño (se salteaba el RLS) y `anon` tenía `SELECT`; el RAG y la memoria del agente no filtraban por empresa. Ver "Seguridad".
+
+## Seguridad — estado y pendientes
+
+- `chat_analytics_daily` con `security_invoker=true`, sin acceso `anon`. **Si se vuelve a recrear la vista, hay que reponer `alter view … set (security_invoker = true)`** (así se perdió antes).
+- `empresa_integrations` no es legible por `anon`, `authenticated` ni `ceibo_readonly`.
+- La clave `SUPABASE_SERVICE_ROLE_KEY` es solo servidor (la usa `send-whatsapp/route.ts`); nunca con prefijo `NEXT_PUBLIC_`.
+- **Pendiente: rotar el secreto** del nodo "Verificar secreto compartido" (está escrito en texto plano en el workflow) y pasarlo a uno distinto por empresa, sincronizado con `empresa_integrations`.
+- **Pendiente:** `phoneNumberId` de "Enviar WhatsApp de vendedor" está fijo en el nodo (cambiarlo en cada copia del workflow).
+- Advisors de Supabase sin resolver (baja prioridad): extensión `vector` en schema `public`, protección de contraseñas filtradas desactivada, `n8n_agent_memory` con RLS sin políticas (funciona porque n8n usa el rol dueño).
+- **Pendiente:** probar el camino real del webhook de Meta con un WhatsApp de verdad post-cambios (la prueba hecha fue una ejecución manual).
+
+## Migraciones
+
+En `supabase/migrations/` (se aplican a mano en el SQL Editor de Supabase):
+
+- `20260921_chat_sessions.sql` — modelo `chat_sessions` + RPC.
+- `20260929_multitenant_a_additive.sql` — sincroniza el repo con la base (`estimated_amount`, `chat_close_turn` de 8 parámetros), crea `empresa_integrations`, `match_documents` tolerante.
+- `20260929_multitenant_b_strict.sql` — quita defaults, `chat_open_turn` con `empresa_id` obligatorio, `match_documents` estricta.
+- `20260929_multitenant_c_security_fixes.sql` — `security_invoker` en la vista, permisos.
+- Los cambios hechos en n8n están documentados en `supabase/n8n-multitenant-changes.md`.
+
+Aplicadas todas en `ceibo-test`. `supabase/schema.sql`, `full_setup.sql` y `seed.sql` son de etapas anteriores y **no reflejan** el estado actual.
 
 ## Frontend — rutas
 
-⚠️ **Esto contradice lo que dice README.md — confiá en el código, no en el README para esto:**
+⚠️ **Esto contradice lo que dice README.md — confiá en el código:**
 
 - `/` → **landing page de marketing** (`src/app/page.tsx`), no el dashboard.
 - `/dashboard` → el dashboard real (autenticado).
-- `/login` → login, redirige a `/dashboard` tras autenticar (ya corregido; antes redirigía a `/` por error).
-- `/inbox`, `/chats`, `/documents`, `/settings` → funcionales con Supabase real (no "Próximamente" como dice el README — esa etiqueta quedó vieja de una versión anterior del sidebar).
+- `/login` → redirige a `/dashboard` tras autenticar.
+- `/inbox`, `/chats`, `/documents`, `/settings` → funcionales con Supabase real (no "Próximamente").
 
 ## Documentación desactualizada — ojo
 
-- `README.md` describe `/` como el dashboard y las pantallas internas como "Próximamente" — **no es así**, ver arriba.
-- `PROJECT.md` describe un trabajo de "clonado visual 1:1" contra un proyecto de referencia (`ceibo_ref`) con paleta terracota/verde bosque (OKLCH, fuentes Sora/Manrope) que aparentemente targeteaba `src/app/page.tsx` como si fuera el dashboard — pero `page.tsx` sigue siendo la landing. Antes de confiar en las rutas/estructura que describe ese doc, verificar contra el código real.
-- Hay carpetas `.agents/` con nombres de subagentes (`auditor_*`, `challenger_*`, `teamwork_preview_*`, etc.) — son artefactos de sesiones de Antigravity usando `/teamwork-preview` (orquestación multi-agente). No son parte del código de la app, se pueden ignorar salvo que se esté auditando qué hizo cada subagente.
+- `README.md` describe `/` como el dashboard y las pantallas internas como "Próximamente" — **no es así**.
+- `PROJECT.md` describe un "clonado visual 1:1" contra `ceibo_ref` que targeteaba `src/app/page.tsx` como si fuera el dashboard — pero `page.tsx` es la landing. Verificar contra el código real.
+- Las carpetas `.agents/` son artefactos de sesiones de Antigravity (`/teamwork-preview`). No son parte de la app.
+- `fix.js`, `fix-tests.js`, `fix-mojibake.js` (raíz) son scripts sueltos de arreglos de codificación; no son parte de la app.
 
 ## Cómo trabajar acá
 
 - Antes de tocar un nodo de n8n o una tabla de Supabase, confirmá contra el proyecto real (`ceibo-test`, no "Prueba n8n").
-- Si algo se ve raro en el frontend (datos que no cambian, siempre los mismos números), sospechá primero del fallback a mock silencioso antes de asumir un bug de lógica.
-- Test credential para probar login real (no mock): `admin@ceibo.ai` / `password123` — visible además como acceso rápido en la propia pantalla de login.
+- Si algo se ve raro en el frontend (datos que no cambian, siempre los mismos números), sospechá primero del fallback a mock silencioso (mirá si aparece MODO DEMO) antes de asumir un bug de lógica.
+- Cuidado con la codificación UTF-8: hubo varios bugs de tildes corruptas (`conexin`, etc.) por herramientas de I/O. Revisar los diffs con tildes.
+- El servidor de desarrollo corre con `npm run dev` en `http://localhost:3000` (hay `.claude/launch.json`). Node 20 funciona pero Supabase avisa que dejará de soportarlo: migrar a Node 22.
+- Test credential para probar login real (no mock): `admin@ceibo.ai` / `password123` — visible además como acceso rápido en la pantalla de login.
+- Hay un lead de prueba (`5491100000099`) en el tenant real, creado el 2026-09-29 al testear el workflow; suma 1 consulta al dashboard.
