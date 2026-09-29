@@ -6,23 +6,10 @@
  */
 
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { pathToFileURL, fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
+import { loadTsModules } from '../helpers/load-ts.mjs';
 
-const require = createRequire(import.meta.url);
-const ts = require('typescript');
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-
-const source = fs.readFileSync(path.join(root, 'src', 'lib', 'dashboard-range.ts'), 'utf8');
-const { outputText } = ts.transpileModule(source, {
-  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 },
-});
-const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ceibo-range-')), 'dashboard-range.mjs');
-fs.writeFileSync(tmp, outputText);
-const R = await import(pathToFileURL(tmp).href);
+const { modules, cleanup } = await loadTsModules(['src/lib/constants.ts', 'src/lib/dashboard-range.ts']);
+const R = modules['dashboard-range'];
 
 let passed = 0;
 const failures = [];
@@ -244,6 +231,53 @@ test('normalizeDashboardData: acepta la respuesta vieja con presupuestos_count a
   assert.equal(d.buckets[0].pedidos_count, 3);
 });
 
+test('localDateOf: fecha local de la empresa, no UTC', () => {
+  // 2026-09-30 01:30 UTC = 22:30 del 29 en Buenos Aires
+  assert.equal(R.localDateOf('2026-09-30T01:30:00Z', 'America/Argentina/Buenos_Aires'), '2026-09-29');
+  assert.equal(R.localDateOf('2026-09-30T01:30:00Z', 'UTC'), '2026-09-30');
+  assert.equal(R.localDateOf('no es una fecha'), '');
+  assert.equal(R.localDateOf(null), '');
+});
+
+test('weekdayName y presetShort', () => {
+  assert.equal(R.weekdayName('2026-09-23', 'long'), 'Mié'); // miercoles
+  assert.equal(R.weekdayName('2026-09-27', 'short'), 'Do'); // domingo
+  assert.equal(R.presetShort('today'), 'hoy');
+  assert.equal(R.presetShort('30d'), 'en 30 días');
+});
+
+test('chartTitle: el titulo del grafico sigue el periodo elegido', () => {
+  const r = { from: '2026-09-01', to: '2026-09-29' };
+  assert.equal(R.chartTitle('today', r), 'Consultas de la semana');
+  assert.equal(R.chartTitle('7d', r), 'Consultas de los últimos 7 días');
+  assert.equal(R.chartTitle('30d', r), 'Consultas de los últimos 30 días');
+  assert.equal(R.chartTitle('90d', r), 'Consultas de los últimos 90 días');
+  assert.equal(R.chartTitle('this_month', r), 'Consultas de este mes');
+  assert.equal(R.chartTitle('last_month', r), 'Consultas del mes pasado');
+  assert.equal(R.chartTitle('custom', { from: '2026-09-05', to: '2026-09-20' }), 'Consultas del 5 Sep al 20 Sep');
+});
+
+test('chartRangeFor: "Hoy" muestra la semana que termina hoy; el resto, el periodo', () => {
+  assert.deepEqual(R.chartRangeFor('today', { from: '2026-09-29', to: '2026-09-29' }), { from: '2026-09-23', to: '2026-09-29' });
+  const month = { from: '2026-09-01', to: '2026-09-29' };
+  assert.deepEqual(R.chartRangeFor('this_month', month), month);
+  assert.deepEqual(R.chartRangeFor('custom', month), month);
+});
+
+test('agrupacion del grafico por periodo: dia / semana / mes', () => {
+  const today = '2026-09-29';
+  const g = (preset) => R.autoGranularity(R.chartRangeFor(preset, R.resolveRange(preset, today)));
+  assert.equal(g('today'), 'day'); // semana, dia a dia
+  assert.equal(g('7d'), 'day');
+  assert.equal(g('30d'), 'day');
+  assert.equal(g('this_month'), 'day');
+  assert.equal(g('last_month'), 'day');
+  assert.equal(g('90d'), 'week');
+  assert.equal(R.granularityNoun('day'), 'por día');
+  assert.equal(R.granularityNoun('week'), 'por semana');
+  assert.equal(R.granularityNoun('month'), 'por mes');
+});
+
 test('etiquetas: rango, bucket y tooltip', () => {
   assert.equal(R.formatRangeLabel({ from: '2026-09-21', to: '2026-09-29' }), '21 Sep – 29 Sep 2026');
   assert.equal(R.formatRangeLabel({ from: '2026-09-29', to: '2026-09-29' }), '29 Sep 2026');
@@ -254,7 +288,7 @@ test('etiquetas: rango, bucket y tooltip', () => {
   assert.equal(R.presetTitle('7d', { from: '', to: '' }), 'Últimos 7 días');
 });
 
-fs.rmSync(path.dirname(tmp), { recursive: true, force: true });
+cleanup();
 
 console.log(`\nPassed: ${passed} / ${passed + failures.length}`);
 if (failures.length) process.exit(1);

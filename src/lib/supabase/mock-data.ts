@@ -4,6 +4,7 @@
  */
 
 import { Empresa, Perfil, ChatAnalytics, ChatAnalyticsRaw, ChatSession, SummaryMetrics, ChatMessage, RecordManagerDocument } from './types';
+import { hoursSaved } from '../constants';
 
 export const MOCK_TENANTS: Record<string, Empresa> = {
   TENANT_A: {
@@ -81,7 +82,7 @@ export function generateMockAnalytics(empresaId: string, baseMultiplier: number,
     const ia = Math.round((70 + Math.sin(i / 2) * 20 + (i % 7) * 4) * baseMultiplier * weekendFactor);
     const humano = Math.round((18 + Math.cos(i / 3) * 6) * baseMultiplier * weekendFactor);
     // Business standard: 12 minutes (0.2h) per AI resolution
-    const horasAhorradas = Math.round(ia * 0.2 * 10) / 10;
+    const horasAhorradas = hoursSaved(ia);
     
     // Distribute total queries roughly into new categories
     const pedidos = Math.round((ia + humano) * 0.4);
@@ -194,9 +195,8 @@ export function calculateSummaryMetrics(rows: ChatAnalytics[] | null | undefined
   const valorEstimado = rows.reduce((acc, r) => acc + (Number(r.valor_estimado) || 0), 0);
   
   const totalConsultas = totalIA + totalHuman;
-  // B2B formula: 12 min per AI-resolved consultation = 0.2 hours
-  const rawHoras = totalIA * 0.2;
-  const horasAhorradas = Math.round(rawHoras * 10) / 10;
+  // Regla de negocio centralizada en lib/constants.ts (12 min por consulta resuelta por la IA)
+  const horasAhorradas = hoursSaved(totalIA);
   const tasaResolucionIA = totalConsultas > 0 ? Math.round((totalIA / totalConsultas) * 100) : 0;
 
   return {

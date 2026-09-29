@@ -12,6 +12,7 @@ import {
   Legend,
 } from 'recharts';
 import { ChartDataPoint } from '@/lib/supabase/types';
+import { hoursSaved } from '@/lib/constants';
 
 interface ChartViewProps {
   data: ChartDataPoint[];
@@ -22,7 +23,7 @@ function CustomTooltip({ active, payload, label }: any) {
     const ia = payload.find((p: any) => p.dataKey === 'ia')?.value || 0;
     const humano = payload.find((p: any) => p.dataKey === 'humano')?.value || 0;
     const total = ia + humano;
-    const horasAhorradas = Math.round(ia * 0.2 * 10) / 10;
+    const horasAhorradas = hoursSaved(ia);
     const pctIA = total > 0 ? Math.round((ia / total) * 100) : 0;
     const pctHumano = total > 0 ? 100 - pctIA : 0;
 

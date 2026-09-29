@@ -52,6 +52,8 @@ export interface ChatSession {
   assigned_to: string | null;
   bot_paused: boolean;
   lead_created_at: string | null;
+  /** Ultimo monto estimado del pedido/presupuesto (cantidad pedida x precio del catalogo) */
+  estimated_amount?: number | string | null;
   last_message_text: string | null;
   last_message_at: string;
   created_at: string;
@@ -166,6 +168,10 @@ export interface TenantAnalyticsClient {
     range: { from: string; to: string },
     granularity: 'day' | 'week' | 'month'
   ): Promise<DashboardData>;
+  /** Sesiones de pedido/presupuesto derivadas a un vendedor y con actividad dentro del rango */
+  getEscalatedOrders(range: { from: string; to: string }, timezone?: string): Promise<ChatSession[]>;
+  /** Codigo de producto -> nombre, del catalogo de la empresa (mejor esfuerzo: {} si falla) */
+  getProductCatalog(): Promise<Record<string, string>>;
   getSummaryMetrics(): Promise<SummaryMetrics>;
   getLeads(): Promise<ChatSession[]>;
   getSessions(): Promise<ChatSession[]>;

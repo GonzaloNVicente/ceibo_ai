@@ -18,7 +18,15 @@ import {
   RecordManagerDocument,
 } from './types';
 import { calculateSummaryMetrics, MOCK_TENANTS } from './mock-data';
-import { buildDashboardFromDailyRows, normalizeDashboardData } from '../dashboard-range';
+import {
+  addDays,
+  buildDashboardFromDailyRows,
+  localDateOf,
+  normalizeDashboardData,
+} from '../dashboard-range';
+
+// pedido y presupuesto son una sola categoria ('pedido_presupuesto' = filas viejas)
+const PEDIDO_QUERY_TYPES = ['pedido', 'pedido_presupuesto'];
 
 export async function getTenantSession(supabaseClient: any): Promise<UserTenantSession | null> {
   // If the engine has direct helper (like mock engine)
@@ -136,6 +144,68 @@ export function createTenantScopedClient(supabaseClient: any): TenantAnalyticsCl
       }
 
       return normalizeDashboardData(data);
+    },
+
+    async getEscalatedOrders(
+      range: { from: string; to: string },
+      timezone?: string
+    ): Promise<ChatSession[]> {
+      const session = await this.getSession();
+      if (!session || !session.perfil?.empresa_id) {
+        throw new Error('UNAUTHORIZED: No active tenant session');
+      }
+
+      // Cota inferior holgada (un dia antes): el filtro exacto por fecha LOCAL se hace abajo
+      const lowerBound = `${addDays(range.from, -1)}T00:00:00Z`;
+
+      const { data, error } = await supabaseClient
+        .from('chat_sessions')
+        .select('*')
+        .eq('empresa_id', session.perfil.empresa_id)
+        .eq('resolution_status', 'derivado')
+        .gte('last_message_at', lowerBound)
+        .order('last_message_at', { ascending: false })
+        .limit(500);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      const tz = timezone || session.empresa?.timezone || undefined;
+      return ((data as ChatSession[]) || []).filter((s) => {
+        if (!s.query_type || !PEDIDO_QUERY_TYPES.includes(s.query_type)) return false;
+        const day = localDateOf(s.last_message_at, tz);
+        return day >= range.from && day <= range.to;
+      });
+    },
+
+    async getProductCatalog(): Promise<Record<string, string>> {
+      const session = await this.getSession();
+      if (!session || !session.perfil?.empresa_id) {
+        throw new Error('UNAUTHORIZED: No active tenant session');
+      }
+
+      // Mejor esfuerzo: si falla (p. ej. modo demo) se muestran los codigos tal cual
+      try {
+        const { data, error } = await supabaseClient
+          .from('tabular_document_rows')
+          .select('row_data')
+          .eq('empresa_id', session.perfil.empresa_id)
+          .limit(2000);
+        if (error || !Array.isArray(data)) return {};
+
+        const catalog: Record<string, string> = {};
+        for (const row of data as { row_data?: Record<string, unknown> }[]) {
+          const code = row.row_data?.['Código'] ?? row.row_data?.['Codigo'];
+          const name = row.row_data?.['Producto'];
+          if (typeof code === 'string' && typeof name === 'string' && code.trim() && name.trim()) {
+            catalog[code.trim().toUpperCase()] = name.trim();
+          }
+        }
+        return catalog;
+      } catch {
+        return {};
+      }
     },
 
     async getSummaryMetrics(): Promise<SummaryMetrics> {

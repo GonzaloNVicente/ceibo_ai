@@ -15,6 +15,7 @@ import type {
   DashboardSummaryRaw,
   SummaryMetrics,
 } from './supabase/types';
+import { hoursSaved } from './constants';
 
 export type RangePreset = 'today' | '7d' | '30d' | '90d' | 'this_month' | 'last_month' | 'custom';
 export type Granularity = 'day' | 'week' | 'month';
@@ -192,7 +193,7 @@ export function buildRangeQuery(preset: RangePreset, range: DateRange, granulari
 // Etiquetas
 // ---------------------------------------------------------------------------------------------
 
-function shortDate(iso: string): string {
+export function formatShortDate(iso: string): string {
   const [, m, d] = iso.split('-').map(Number);
   return `${d} ${MONTH_NAMES[m - 1]}`;
 }
@@ -200,9 +201,9 @@ function shortDate(iso: string): string {
 export function formatRangeLabel(range: DateRange): string {
   const [fy] = range.from.split('-');
   const [ty] = range.to.split('-');
-  if (range.from === range.to) return `${shortDate(range.to)} ${ty}`;
-  if (fy === ty) return `${shortDate(range.from)} – ${shortDate(range.to)} ${ty}`;
-  return `${shortDate(range.from)} ${fy} – ${shortDate(range.to)} ${ty}`;
+  if (range.from === range.to) return `${formatShortDate(range.to)} ${ty}`;
+  if (fy === ty) return `${formatShortDate(range.from)} – ${formatShortDate(range.to)} ${ty}`;
+  return `${formatShortDate(range.from)} ${fy} – ${formatShortDate(range.to)} ${ty}`;
 }
 
 export function presetTitle(preset: RangePreset, range: DateRange): string {
@@ -224,26 +225,103 @@ export function presetTitle(preset: RangePreset, range: DateRange): string {
   }
 }
 
+/**
+ * Titulo del grafico de consultas segun el periodo elegido. "Hoy" es un solo dia, que no da para un
+ * grafico de barras: se muestra la semana que termina hoy (ver `chartRangeFor`).
+ */
+export function chartTitle(preset: RangePreset, range: DateRange): string {
+  switch (preset) {
+    case 'today':
+      return 'Consultas de la semana';
+    case '7d':
+      return 'Consultas de los últimos 7 días';
+    case '30d':
+      return 'Consultas de los últimos 30 días';
+    case '90d':
+      return 'Consultas de los últimos 90 días';
+    case 'this_month':
+      return 'Consultas de este mes';
+    case 'last_month':
+      return 'Consultas del mes pasado';
+    default:
+      return `Consultas del ${formatShortDate(range.from)} al ${formatShortDate(range.to)}`;
+  }
+}
+
+const GRANULARITY_NOUN: Record<Granularity, string> = { day: 'por día', week: 'por semana', month: 'por mes' };
+
+/** "por día" | "por semana" | "por mes" */
+export function granularityNoun(granularity: Granularity): string {
+  return GRANULARITY_NOUN[granularity];
+}
+
+/** Rango que muestra el grafico: el periodo elegido, salvo "Hoy", que muestra los 7 dias hasta hoy. */
+export function chartRangeFor(preset: RangePreset, range: DateRange): DateRange {
+  return preset === 'today' ? { from: addDays(range.to, -6), to: range.to } : range;
+}
+
 export function formatBucketLabel(iso: string, granularity: Granularity): string {
   if (granularity === 'month') {
     const [y, m] = iso.split('-').map(Number);
     return `${MONTH_NAMES[m - 1]} ${String(y).slice(2)}`;
   }
-  return shortDate(iso);
+  return formatShortDate(iso);
 }
 
 export function formatBucketTooltip(iso: string, granularity: Granularity): string {
-  if (granularity === 'week') return `Semana del ${shortDate(iso)} ${iso.slice(0, 4)}`;
+  if (granularity === 'week') return `Semana del ${formatShortDate(iso)} ${iso.slice(0, 4)}`;
   if (granularity === 'month') {
     const [y, m] = iso.split('-').map(Number);
     return `${MONTH_NAMES[m - 1]} ${y}`;
   }
-  return `${shortDate(iso)} ${iso.slice(0, 4)}`;
+  return `${formatShortDate(iso)} ${iso.slice(0, 4)}`;
 }
 
 // ---------------------------------------------------------------------------------------------
 // Comparacion con el periodo anterior
 // ---------------------------------------------------------------------------------------------
+
+/** Frase corta para acompanar un numero: "36 min hoy", "3,6 h en 30 días". */
+export function presetShort(preset: RangePreset): string {
+  switch (preset) {
+    case 'today':
+      return 'hoy';
+    case '7d':
+      return 'en 7 días';
+    case '30d':
+      return 'en 30 días';
+    case '90d':
+      return 'en 90 días';
+    case 'this_month':
+      return 'este mes';
+    case 'last_month':
+      return 'el mes pasado';
+    default:
+      return 'en el período';
+  }
+}
+
+const WEEKDAYS_2 = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá'];
+const WEEKDAYS_3 = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+/** Dia de la semana de una fecha 'YYYY-MM-DD': 'Mi' (corto) o 'Mié' (largo). */
+export function weekdayName(iso: string, style: 'short' | 'long' = 'long'): string {
+  const dow = parseIso(iso).getUTCDay();
+  return (style === 'short' ? WEEKDAYS_2 : WEEKDAYS_3)[dow];
+}
+
+/** Fecha local ('YYYY-MM-DD') de un timestamp ISO en la zona horaria de la empresa; '' si no es valida. */
+export function localDateOf(timestamp: string | null | undefined, timeZone: string = DEFAULT_TIMEZONE): string {
+  const date = timestamp ? new Date(timestamp) : null;
+  if (!date || Number.isNaN(date.getTime())) return '';
+  const format = (tz: string) =>
+    new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+  try {
+    return format(timeZone);
+  } catch {
+    return format(DEFAULT_TIMEZONE);
+  }
+}
 
 export type Delta =
   | { kind: 'none' } // sin datos en ninguno de los dos periodos
@@ -274,7 +352,7 @@ export function toSummaryMetrics(raw: DashboardSummaryRaw): SummaryMetrics {
     totalConsultas,
     totalIA,
     totalHuman,
-    horasAhorradas: Math.round(totalIA * 0.2 * 10) / 10,
+    horasAhorradas: hoursSaved(totalIA),
     tasaResolucionIA: totalConsultas > 0 ? Math.round((totalIA / totalConsultas) * 100) : 0,
     pedidosCount: num(raw.pedidos_count),
     reclamosCount: num(raw.reclamos_count),
@@ -359,7 +437,7 @@ function summarizeRows(rows: ChatAnalytics[]): DashboardSummaryRaw {
     resueltas_ia: ia,
     derivadas_humano: humano,
     total_consultas: ia + humano,
-    horas_ahorradas: Math.round(ia * 0.2 * 10) / 10,
+    horas_ahorradas: hoursSaved(ia),
     // pedido y presupuesto son una sola categoria (las filas viejas de la vista los traen separados)
     pedidos_count: sum((r) => num(r.pedidos_count) + num(r.presupuestos_count)),
     reclamos_count: sum((r) => r.reclamos_count),

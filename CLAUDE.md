@@ -125,16 +125,38 @@ Valores canónicos: `consulta_general`, `consulta_precio`, `consulta_stock`, **`
 
 ## Dashboard por período
 
-El cliente elige el período (Hoy, 7/30/90 días, Este mes, Mes pasado, Personalizado) y la agrupación del gráfico (Auto/Día/Semana/Mes). **Todo** —tarjetas, pipeline y gráfico— sale de una única respuesta de `get_dashboard_metrics()`, así que no pueden desincronizarse.
+### Diseño ("Dos protagonistas") — `src/app/dashboard/page.tsx`
 
-- El período vive en la URL: `/dashboard?rango=30d`, `?rango=custom&desde=YYYY-MM-DD&hasta=YYYY-MM-DD`, `&gran=week`. Sin parámetros = 30 días.
-- Lógica pura y testeada en `src/lib/dashboard-range.ts` (`node tests/e2e/test-dashboard-range.mjs`). Selector en `src/components/dashboard/period-filter.tsx`.
-- Granularidad automática: ≤31 días → día, ≤180 → semana (lunes a domingo), más → mes.
-- Cada tarjeta compara contra el **período anterior de igual duración**.
-- **Definición de pipeline (`valor_estimado`):** suma del **último** monto estimado de cada cliente (sesión) con `pedido` o `pedido_presupuesto` dentro del período. No suma dos veces al cliente que repite el mismo presupuesto. (Antes se sumaba cada consulta.)
+Una sola pantalla de escritorio, sin scroll: encabezado compacto con el selector de período → dos tarjetas protagonistas (**Tiempo ahorrado** y **Pedidos derivados**) → fila inferior (**gráfico de consultas** + **lista de pedidos derivados**). Componentes en `src/components/dashboard/`: `time-saved-card`, `pedidos-card`, `activity-chart` (barras apiladas en HTML/CSS, sin Recharts), `derived-orders-list`, `period-filter` (control segmentado).
+
+- **El período elegido cambia todo:** tarjetas, gráfico grande y lista. Períodos visibles: Hoy, 7 días, 30 días, Este mes, Personalizado (90 días y Mes pasado siguen funcionando por URL y aparecen como un segmento extra cuando están activos).
+- **El gráfico grande sigue el período:** cambian el título ("Consultas de los últimos 30 días", "…de este mes", "…del 5 Sep al 20 Sep"), la escala y la agrupación (≤31 días por día, ≤180 por semana, más por mes). Con **"Hoy"** (un solo día) muestra los 7 días que terminan hoy. Con más de 16 barras se ocultan los totales y se muestran ~8 etiquetas del eje.
+- **El mini gráfico verde y el total "últimos 7 días"** de la tarjeta de tiempo ahorrado son **siempre los 7 días que terminan en el último día del período** (segunda llamada a `get_dashboard_metrics`, salvo que el período ya sea de 7 días).
+- **Tarjeta de pedidos:** cuenta `chat_sessions` de tipo `pedido` con `resolution_status = 'derivado'` y actividad (`last_message_at`, en la zona horaria de la empresa) dentro del período; "Sin asignar" = `assigned_to` nulo. El **valor estimado** es la suma de `chat_sessions.estimated_amount` de esas mismas sesiones (coincide con la lista). No usa el `valor_estimado` de la función SQL.
+- **Lista de pedidos:** `related_product_id` llega mezclado desde el bot (código `COR-001`, texto libre o lista con comas). Se traduce con el catálogo (`getProductCatalog()` → `tabular_document_rows`) y las listas se resumen ("X y 2 más"). La cantidad pedida no se guarda, no se muestra. Teléfonos enmascarados (`+54 9 336 ••• 3664`).
+- **Tiempo real:** refresco cada 60 s, suscripción a cambios de `chat_sessions` (con debounce) y "actualizado hace X min" clickeable.
+- **Tiempo ahorrado:** `MINUTES_SAVED_PER_AI_RESOLUTION` (12 min) vive solo en `src/lib/constants.ts`; menos de 60 min se muestra en minutos, desde una hora en horas con coma ("3,6 h"). La base lo repite en SQL (`* 0.2`): si se cambia, cambiar ambos.
+- Los helpers de formato (es-AR, teléfono, tiempo relativo, producto) están en `src/lib/format.ts` con tests (`node tests/e2e/test-dashboard-format.mjs`).
+
+### Período y datos
+
+- El período vive en la URL: `/dashboard?rango=30d`, `?rango=custom&desde=YYYY-MM-DD&hasta=YYYY-MM-DD`, `&gran=week` (la agrupación manual ya no tiene control en pantalla). Sin parámetros = 30 días.
+- Lógica pura y testeada en `src/lib/dashboard-range.ts` (`node tests/e2e/test-dashboard-range.mjs`).
+- Las métricas salen de `get_dashboard_metrics()`, así que tarjetas y gráfico no pueden desincronizarse. La tarjeta de tiempo ahorrado compara contra el **período anterior de igual duración** (solo si hay una variación calculable).
+- **Definición de pipeline en la función SQL (`valor_estimado`):** suma del **último** monto estimado de cada cliente (sesión) con `pedido` dentro del período. No suma dos veces al cliente que repite el mismo presupuesto. (El dashboard actual no lo muestra: ver "Tarjeta de pedidos".)
 - Los días se cortan en la **zona horaria de la empresa**, no en UTC (antes una consulta a las 22:00 en Argentina caía en el día siguiente).
 - Antes se usaba `.limit(30)` sobre la vista, que tomaba los últimos 30 *días con actividad* y no los últimos 30 días de calendario. `getRecent30Days()` sigue existiendo (lo usa `/api/analytics` y los tests viejos) pero **el dashboard ya no lo usa**.
 - En modo demo (cliente mock) no hay RPC: el resultado se arma en el navegador desde las filas diarias del mock (`buildDashboardFromDailyRows`), y el pipeline es una suma simple.
+
+## Semántica de color
+
+**Bueno = verde, malo = rojo.** Un mismo color significa lo mismo en toda la app.
+
+- **Verde (`success`)**: resultados buenos y dinero. Consultas resueltas por la IA, tiempo ahorrado, pedidos derivados ("listos para cerrar"), valor estimado, montos, "Con un vendedor", "Atendido", "0 reclamos", asistente activo. **Verde claro (`success-light`)**: token disponible para distinguir dos series verdes (hoy sin uso en el gráfico).
+- **Rojo (`negative`)**: lo malo o lo que pide acción. Reclamos (si hay), "Sin asignar", "Pendiente"/"Atención requerida" (Inbox y Chats), el contador de pendientes de la barra lateral, errores de conexión. `Badge variant="destructive"` usa este rojo. (`destructive` sigue para banners y toasts de error.)
+- **Terracota (`ceibo` / `primary`)**: **marca e identidad** — logo, botón principal ("Entrenar asistente"), login, landing, etiqueta del plan y burbujas del asesor en Chats. **Excepción pedida por el dueño:** en el gráfico de consultas, las **derivadas a vendedor** (barras y leyenda) y el chip de **reclamos** van en terracota. Fuera de eso, no usarla para indicar estado.
+- Amarillo/ámbar (`Badge variant="warning"`): estados intermedios ("Sin clasificar", "Bot Pausado").
+- Tokens en `src/app/globals.css` (`--success`, `--success-light`, `--negative`) y `tailwind.config.ts`. Ambos superan contraste 4.5:1 sobre blanco para texto; usar `text-negative` (no `text-destructive`) para texto chico en rojo.
 
 ## Barra lateral plegable
 
