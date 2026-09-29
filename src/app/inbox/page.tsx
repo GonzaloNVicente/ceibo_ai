@@ -243,12 +243,12 @@ export default function InboxPage() {
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
                 statusFilter === 'derivado'
-                  ? "bg-ceibo-soft text-ceibo border border-ceibo/30 font-bold"
+                  ? "bg-negative/10 text-negative border border-negative/30 font-bold"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
               <Clock className="size-3" />
-              Pendientes <span className="ml-1 rounded bg-ceibo/15 px-1.5 py-0.5 text-[10px] text-ceibo font-bold">{pendientesCount}</span>
+              Pendientes <span className="ml-1 rounded bg-negative/15 px-1.5 py-0.5 text-[10px] text-negative font-bold">{pendientesCount}</span>
             </button>
             <button 
               onClick={() => setStatusFilter('resuelto')}
@@ -326,7 +326,7 @@ export default function InboxPage() {
                           Sin clasificar
                         </Badge>
                       ) : getLeadStatus(lead) === 'derivado' ? (
-                        <Badge variant="ceibo">
+                        <Badge variant="destructive">
                           <Clock className="size-3 mr-1" />
                           Pendiente
                         </Badge>

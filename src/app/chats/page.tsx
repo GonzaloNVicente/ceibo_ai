@@ -268,7 +268,7 @@ export default function ChatsPage() {
                           +{lead.customer_phone}
                         </p>
                         {lead.resolution_status === 'derivado' ? (
-                          <span className="live-pulse size-2 rounded-full bg-ceibo shrink-0" title="Requiere atención humana" />
+                          <span className="live-pulse size-2 rounded-full bg-negative shrink-0" title="Requiere atención humana" />
                         ) : (
                           <span className="size-2 rounded-full bg-success/60 shrink-0" title="Resuelto por IA" />
                         )}
@@ -313,7 +313,7 @@ export default function ChatsPage() {
                   )}
                   {selectedLead.resolution_status === 'derivado' ? (
                     <div className="flex gap-2 items-center">
-                      <Badge variant="ceibo">
+                      <Badge variant="destructive">
                         <Clock className="size-3 mr-1" />
                         Atención Requerida
                       </Badge>

@@ -26,6 +26,9 @@
     --ring: oklch(0.555 0.163 33.5);
     --success: oklch(0.49 0.103 162.1);
     --success-foreground: oklch(0.982 0.006 145.1);
+    /* Semantica de color: BUENO = verde (success), MALO = rojo (negative). La terracota (ceibo/primary) es solo marca. */
+    --success-light: oklch(0.68 0.12 162);
+    --negative: oklch(0.52 0.205 27.3);
     --ceibo: oklch(0.555 0.163 33.5);
     --ceibo-soft: oklch(0.94 0.025 36.5);
     --grid-line: oklch(0.87 0.009 147.4 / 62%);
@@ -63,6 +66,8 @@
     --accent-foreground: oklch(0.984 0.003 247.858);
     --destructive: oklch(0.704 0.191 22.216);
     --destructive-foreground: oklch(0.984 0.003 247.858);
+    --success-light: oklch(0.6 0.12 162);
+    --negative: oklch(0.704 0.191 22.216);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.551 0.027 264.364);

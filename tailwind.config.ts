@@ -69,7 +69,10 @@ const config: Config = {
         success: {
           DEFAULT: withOpacity('--success'),
           foreground: withOpacity('--success-foreground'),
+          light: withOpacity('--success-light'),
         },
+        // Lo malo / lo que requiere accion (rojo). Lo bueno es `success` (verde).
+        negative: withOpacity('--negative'),
         'success-foreground': withOpacity('--success-foreground'),
         'grid-line': withOpacity('--grid-line'),
         chart: {

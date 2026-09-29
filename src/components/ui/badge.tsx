@@ -25,7 +25,7 @@ const variantStyles: Record<string, string> = {
   neutral: "bg-muted text-muted-foreground border-border font-medium",
   outline: "text-foreground border-border bg-transparent",
   warning: "bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/25 font-semibold",
-  destructive: "bg-destructive/10 text-destructive border-destructive/25 font-semibold",
+  destructive: "bg-negative/10 text-negative border-negative/25 font-semibold",
 };
 
 export function Badge({

@@ -166,7 +166,7 @@ export function Sidebar({ className, onNavigate, isMobile, collapsed, onToggleCo
                   {badge > 0 && (
                     <span
                       aria-hidden="true"
-                      className="absolute right-1.5 top-1.5 min-w-4 rounded-full bg-ceibo px-1 text-center text-[9px] font-bold leading-4 text-white shadow-sm"
+                      className="absolute right-1.5 top-1.5 min-w-4 rounded-full bg-negative px-1 text-center text-[9px] font-bold leading-4 text-white shadow-sm"
                     >
                       {badge > 99 ? '99+' : badge}
                     </span>
@@ -176,7 +176,7 @@ export function Sidebar({ className, onNavigate, isMobile, collapsed, onToggleCo
                 <>
                   <span className="truncate">{item.label}</span>
                   {item.label === 'Inbox' && pendingCount > 0 ? (
-                    <span className="ml-auto rounded-full bg-ceibo px-2 py-0.5 text-[11px] font-bold text-white shadow-sm">
+                    <span className="ml-auto rounded-full bg-negative px-2 py-0.5 text-[11px] font-bold text-white shadow-sm">
                       {pendingCount}
                     </span>
                   ) : item.count ? (
