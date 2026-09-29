@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { CircleUserRound } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Sidebar } from './sidebar';
 import { Navbar } from './navbar';
 
@@ -10,9 +11,50 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
+const SIDEBAR_STORAGE_KEY = 'ceibo.sidebar.collapsed';
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el || !el.tagName) return false;
+  return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName);
+}
+
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Recordar la preferencia del usuario (el almacenamiento puede no estar disponible)
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(SIDEBAR_STORAGE_KEY) === '1') setSidebarCollapsed(true);
+    } catch {
+      /* sin almacenamiento: queda expandida */
+    }
+  }, []);
+
+  const toggleSidebar = useCallback(() => {
+    const next = !sidebarCollapsed;
+    setSidebarCollapsed(next);
+    try {
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, next ? '1' : '0');
+    } catch {
+      /* ignorar */
+    }
+  }, [sidebarCollapsed]);
+
+  // Atajo Ctrl/Cmd + B (no interfiere mientras se escribe en un campo)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'b') {
+        if (isEditableTarget(e.target)) return;
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [toggleSidebar]);
 
   // Auth pages (login) have clean dedicated layout without sidebar/navbar
   const isAuthPage = pathname === '/login';
@@ -24,8 +66,8 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div id="dashboard" className="min-h-screen bg-background text-foreground">
-      {/* Desktop Fixed Sidebar */}
-      <Sidebar />
+      {/* Desktop Fixed Sidebar (se pliega a una franja de iconos) */}
+      <Sidebar collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebar} />
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
@@ -42,8 +84,13 @@ export function AppShell({ children }: AppShellProps) {
         </div>
       )}
 
-      {/* Main Content Column with 252px Desktop Offset */}
-      <div className="lg:pl-[252px] flex min-h-screen flex-col min-w-0">
+      {/* Main Content Column: offset = ancho de la barra (252px expandida / 72px plegada) */}
+      <div
+        className={cn(
+          'flex min-h-screen min-w-0 flex-col transition-[padding] duration-200 motion-reduce:transition-none',
+          sidebarCollapsed ? 'lg:pl-[72px]' : 'lg:pl-[252px]'
+        )}
+      >
         <Navbar onMenuToggle={() => setMobileMenuOpen((prev) => !prev)} />
         <main className="mx-auto w-full max-w-[1500px] flex-1 px-4 py-6 sm:px-6 xl:px-8 xl:py-8">
           {children}

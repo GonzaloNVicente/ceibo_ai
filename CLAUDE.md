@@ -136,6 +136,10 @@ El cliente elige el período (Hoy, 7/30/90 días, Este mes, Mes pasado, Personal
 - Antes se usaba `.limit(30)` sobre la vista, que tomaba los últimos 30 *días con actividad* y no los últimos 30 días de calendario. `getRecent30Days()` sigue existiendo (lo usa `/api/analytics` y los tests viejos) pero **el dashboard ya no lo usa**.
 - En modo demo (cliente mock) no hay RPC: el resultado se arma en el navegador desde las filas diarias del mock (`buildDashboardFromDailyRows`), y el pipeline es una suma simple.
 
+## Barra lateral plegable
+
+En escritorio la barra lateral se pliega a una franja de íconos (72px, con tooltips y el contador de Inbox como burbuja) con el botón de su encabezado o con `Ctrl/Cmd + B`. La preferencia se guarda en `localStorage` (`ceibo.sidebar.collapsed`). El estado vive en `AppShell` (`src/components/layout/app-shell.tsx`), que ajusta el margen del contenido (`lg:pl-[72px]` / `lg:pl-[252px]`). El drawer mobile nunca se pliega.
+
 ## Frontend — rutas
 
 ⚠️ **Esto contradice lo que dice README.md — confiá en el código:**
