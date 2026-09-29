@@ -92,7 +92,7 @@ export default function DashboardPage() {
       setErrorState(err.message || 'Error desconocido al conectar con la base de datos.');
       setAnalytics([]);
       setMetrics(emptyMetrics);
-      setLastUpdated('error de conexin');
+      setLastUpdated('error de conexión');
     } finally {
       setLoadingData(false);
     }

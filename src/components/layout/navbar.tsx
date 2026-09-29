@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { BrandMark } from './sidebar';
 import { useBotActivity } from '@/hooks/use-bot-activity';
 import { cn } from '@/lib/utils';
+import { isLiveConfigured } from '@/lib/supabase/client';
 
 interface NavbarProps {
   onMenuToggle?: () => void;
@@ -65,6 +66,14 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
             <span className="hidden rounded bg-ceibo-soft px-2 py-1 text-[10px] font-bold text-ceibo sm:inline">
               {tenantPlan}
             </span>
+            {!isLiveConfigured() && (
+              <span
+                className="rounded border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-800"
+                title="Sin credenciales de Supabase: los datos son de demostración, no reales"
+              >
+                MODO DEMO
+              </span>
+            )}
           </div>
           <div className="mt-0.5 hidden items-center gap-1.5 text-[11px] text-muted-foreground sm:flex">
             <MessageCircleMore className={cn("size-3.5", isOperative ? "text-success" : "text-muted-foreground")} />
