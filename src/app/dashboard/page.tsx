@@ -261,10 +261,10 @@ function DashboardContent() {
       text: `${formatCount(metrics.totalConsultas)} ${metrics.totalConsultas === 1 ? 'consulta' : 'consultas'} ${periodPhrase}`,
       tone: 'neutral',
     },
-    { text: `${metrics.tasaResolucionIA}% resueltas por la IA`, tone: 'good' },
+    { text: `${metrics.tasaResolucionIA}% resueltas por la IA`, tone: 'info' }, // azul, igual que la serie del grafico
     {
       text: `${formatCount(metrics.reclamosCount)} ${metrics.reclamosCount === 1 ? 'reclamo' : 'reclamos'}`,
-      tone: 'brand', // terracota, igual que las derivadas del grafico
+      tone: 'brand', // terracota, pedido del dueño
     },
   ];
 

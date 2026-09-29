@@ -15,8 +15,8 @@ export interface ChartBar {
 
 export interface ChartChip {
   text: string;
-  /** bueno = verde, malo = rojo, marca = terracota (mismo color que las derivadas), neutral = gris */
-  tone: 'good' | 'bad' | 'brand' | 'neutral';
+  /** bueno = verde, malo = rojo, info = azul (resueltas por la IA), marca = terracota, neutral = gris */
+  tone: 'good' | 'bad' | 'brand' | 'info' | 'neutral';
 }
 
 const CHIP_TONES: Record<ChartChip['tone'], string> = {
@@ -24,6 +24,7 @@ const CHIP_TONES: Record<ChartChip['tone'], string> = {
   good: 'bg-success/10 text-success',
   bad: 'bg-negative/10 text-negative',
   brand: 'bg-ceibo-soft text-ceibo',
+  info: 'bg-info/10 text-info-strong',
 };
 
 interface ActivityChartProps {
@@ -68,11 +69,11 @@ export function ActivityChart({ title, caption, ready, bars, chips }: ActivityCh
         </div>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-muted-foreground">
           <span className="flex items-center gap-2">
-            <span className="size-2.5 rounded-sm bg-success" aria-hidden="true" />
+            <span className="size-2.5 rounded-sm bg-info" aria-hidden="true" />
             Resueltas por IA
           </span>
           <span className="flex items-center gap-2">
-            <span className="size-2.5 rounded-sm bg-ceibo" aria-hidden="true" />
+            <span className="size-2.5 rounded-sm bg-success" aria-hidden="true" />
             Derivadas a vendedor
           </span>
         </div>
@@ -124,10 +125,10 @@ export function ActivityChart({ title, caption, ready, bars, chips }: ActivityCh
                     </span>
                   )}
                   <div
-                    className="w-full bg-success"
+                    className="w-full bg-info"
                     style={{ height: `${(bar.ai / total) * 100}%`, borderRadius: bar.human > 0 ? 0 : '6px 6px 0 0' }}
                   />
-                  <div className="w-full rounded-t-md bg-ceibo" style={{ height: `${(bar.human / total) * 100}%` }} />
+                  <div className="w-full rounded-t-md bg-success" style={{ height: `${(bar.human / total) * 100}%` }} />
                 </div>
               ) : (
                 <div className={cn('absolute flex flex-col items-center gap-1.5', inset)} style={{ bottom: LABEL_SPACE }}>

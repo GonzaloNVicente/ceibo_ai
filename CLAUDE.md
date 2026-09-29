@@ -152,9 +152,10 @@ Una sola pantalla de escritorio, sin scroll: encabezado compacto con el selector
 
 **Bueno = verde, malo = rojo.** Un mismo color significa lo mismo en toda la app.
 
-- **Verde (`success`)**: resultados buenos y dinero. Consultas resueltas por la IA, tiempo ahorrado, pedidos derivados ("listos para cerrar"), valor estimado, montos, "Con un vendedor", "Atendido", "0 reclamos", asistente activo. **Verde claro (`success-light`)**: token disponible para distinguir dos series verdes (hoy sin uso en el gráfico).
+- **Verde (`success`)**: resultados buenos y dinero. Consultas resueltas por la IA, tiempo ahorrado, pedidos derivados ("listos para cerrar"), valor estimado, montos, "Con un vendedor", "Atendido", "0 reclamos", asistente activo. **Verde claro (`success-light`)**: token disponible para distinguir dos series verdes (hoy sin uso).
 - **Rojo (`negative`)**: lo malo o lo que pide acción. Reclamos (si hay), "Sin asignar", "Pendiente"/"Atención requerida" (Inbox y Chats), el contador de pendientes de la barra lateral, errores de conexión. `Badge variant="destructive"` usa este rojo. (`destructive` sigue para banners y toasts de error.)
-- **Terracota (`ceibo` / `primary`)**: **marca e identidad** — logo, botón principal ("Entrenar asistente"), login, landing, etiqueta del plan y burbujas del asesor en Chats. **Excepción pedida por el dueño:** en el gráfico de consultas, las **derivadas a vendedor** (barras y leyenda) y el chip de **reclamos** van en terracota. Fuera de eso, no usarla para indicar estado.
+- **Terracota (`ceibo` / `primary`)**: **marca e identidad** — logo, botón principal ("Entrenar asistente"), login, landing, etiqueta del plan y burbujas del asesor en Chats. **Excepción pedida por el dueño:** el chip de **reclamos** del gráfico de consultas va en terracota. Fuera de eso, no usarla para indicar estado.
+- **Azul (`info`, texto chico `info-strong`)**: informativo, ni bueno ni malo. En el gráfico de consultas las **resueltas por la IA** van en azul (barras, leyenda y chip "% resueltas por la IA") y las **derivadas a vendedor** en verde (son oportunidad de venta).
 - Amarillo/ámbar (`Badge variant="warning"`): estados intermedios ("Sin clasificar", "Bot Pausado").
 - Tokens en `src/app/globals.css` (`--success`, `--success-light`, `--negative`) y `tailwind.config.ts`. Ambos superan contraste 4.5:1 sobre blanco para texto; usar `text-negative` (no `text-destructive`) para texto chico en rojo.
 

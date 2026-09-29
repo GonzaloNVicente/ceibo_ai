@@ -73,6 +73,10 @@ const config: Config = {
         },
         // Lo malo / lo que requiere accion (rojo). Lo bueno es `success` (verde).
         negative: withOpacity('--negative'),
+        info: {
+          DEFAULT: withOpacity('--info'),
+          strong: withOpacity('--info-strong'),
+        },
         'success-foreground': withOpacity('--success-foreground'),
         'grid-line': withOpacity('--grid-line'),
         chart: {
