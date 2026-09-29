@@ -97,10 +97,45 @@ export interface SummaryMetrics {
   totalHuman: number;
   horasAhorradas: number;
   tasaResolucionIA: number;
+  /** Pedidos + presupuestos: una sola categoria comercial */
   pedidosCount: number;
-  presupuestosCount: number;
   reclamosCount: number;
   valorEstimado: number;
+  /** Cantidad de clientes que componen el valor estimado (solo con datos reales). */
+  leadsConMonto?: number;
+}
+
+/** Totales de un periodo, tal como los devuelve get_dashboard_metrics(). */
+export interface DashboardSummaryRaw {
+  resueltas_ia: number;
+  derivadas_humano: number;
+  total_consultas: number;
+  horas_ahorradas: number;
+  pedidos_count: number; // pedidos + presupuestos
+  reclamos_count: number;
+  valor_estimado: number;
+  leads_con_monto: number;
+}
+
+/** Un punto del grafico (un dia, una semana o un mes). `date` es el primer dia del bucket. */
+export interface DashboardBucket {
+  date: string; // 'YYYY-MM-DD'
+  resueltas_ia: number;
+  derivadas_humano: number;
+  total_consultas: number;
+  horas_ahorradas: number;
+  pedidos_count: number; // pedidos + presupuestos
+  reclamos_count: number;
+}
+
+export interface DashboardData {
+  timezone: string;
+  from: string;
+  to: string;
+  granularity: 'day' | 'week' | 'month';
+  buckets: DashboardBucket[];
+  summary: DashboardSummaryRaw;
+  previous: { from: string; to: string; summary: DashboardSummaryRaw };
 }
 
 export interface ChartDataPoint {
@@ -127,6 +162,10 @@ export interface TenantAnalyticsClient {
   empresaId: string;
   getSession(): Promise<UserTenantSession | null>;
   getRecent30Days(): Promise<ChatAnalytics[]>;
+  getDashboardMetrics(
+    range: { from: string; to: string },
+    granularity: 'day' | 'week' | 'month'
+  ): Promise<DashboardData>;
   getSummaryMetrics(): Promise<SummaryMetrics>;
   getLeads(): Promise<ChatSession[]>;
   getSessions(): Promise<ChatSession[]>;

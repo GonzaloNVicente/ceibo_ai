@@ -32,8 +32,12 @@ export function formatPercentage(value: number): string {
 /**
  * Formats query type strings (e.g. 'soporte_tecnico' -> 'Soporte Tecnico')
  */
+// Pedido y presupuesto son una sola categoria comercial para el cliente
+export const PEDIDO_LABEL = 'Pedido / Presupuesto';
+
 export function formatQueryType(type: string): string {
   if (!type) return '';
+  if (type === 'pedido' || type === 'pedido_presupuesto') return PEDIDO_LABEL;
   return type
     .split('_')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))

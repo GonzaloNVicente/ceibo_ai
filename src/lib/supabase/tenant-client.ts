@@ -10,6 +10,7 @@ import {
   TenantAnalyticsClient,
   UserTenantSession,
   ChatAnalytics,
+  DashboardData,
   SummaryMetrics,
   ChatAnalyticsRaw,
   ChatMessage,
@@ -17,6 +18,7 @@ import {
   RecordManagerDocument,
 } from './types';
 import { calculateSummaryMetrics, MOCK_TENANTS } from './mock-data';
+import { buildDashboardFromDailyRows, normalizeDashboardData } from '../dashboard-range';
 
 export async function getTenantSession(supabaseClient: any): Promise<UserTenantSession | null> {
   // If the engine has direct helper (like mock engine)
@@ -92,6 +94,48 @@ export function createTenantScopedClient(supabaseClient: any): TenantAnalyticsCl
 
       const rows = (data as ChatAnalytics[]) || [];
       return rows.reverse();
+    },
+
+    async getDashboardMetrics(
+      range: { from: string; to: string },
+      granularity: 'day' | 'week' | 'month'
+    ): Promise<DashboardData> {
+      const session = await this.getSession();
+      if (!session || !session.perfil?.empresa_id) {
+        throw new Error('UNAUTHORIZED: No active tenant session');
+      }
+
+      this.empresaId = session.perfil.empresa_id;
+
+      // Modo demo: el cliente mock no tiene RPC, se arma el mismo resultado desde las filas diarias
+      if (typeof supabaseClient._getCurrentUser === 'function') {
+        const { data, error } = await supabaseClient
+          .from('chat_analytics_daily')
+          .select('*')
+          .eq('empresa_id', session.perfil.empresa_id);
+
+        if (error) {
+          throw new Error(error.message);
+        }
+        return buildDashboardFromDailyRows(
+          (data as ChatAnalytics[]) || [],
+          range,
+          granularity,
+          session.empresa?.timezone || undefined
+        );
+      }
+
+      const { data, error } = await supabaseClient.rpc('get_dashboard_metrics', {
+        p_from: range.from,
+        p_to: range.to,
+        p_granularity: granularity,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return normalizeDashboardData(data);
     },
 
     async getSummaryMetrics(): Promise<SummaryMetrics> {

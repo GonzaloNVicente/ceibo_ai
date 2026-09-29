@@ -96,8 +96,8 @@ export function generateMockAnalytics(empresaId: string, baseMultiplier: number,
       derivadas_humano: humano,
       total_consultas: ia + humano,
       horas_ahorradas: horasAhorradas,
-      pedidos_count: pedidos,
-      presupuestos_count: presupuestos,
+      pedidos_count: pedidos + presupuestos, // pedido y presupuesto son una sola categoria
+      presupuestos_count: 0,
       reclamos_count: reclamos,
       valor_estimado: estimatedValue,
     });
@@ -124,7 +124,7 @@ const REALISTIC_NAMES = [
 ];
 
 const QUERY_TYPES = [
-  'pedido_presupuesto',
+  'pedido',
   'reclamo',
   'consulta_stock',
   'consulta_precio',
@@ -178,7 +178,6 @@ export function calculateSummaryMetrics(rows: ChatAnalytics[] | null | undefined
       horasAhorradas: 0,
       tasaResolucionIA: 0,
       pedidosCount: 0,
-      presupuestosCount: 0,
       reclamosCount: 0,
       valorEstimado: 0,
     };
@@ -186,8 +185,11 @@ export function calculateSummaryMetrics(rows: ChatAnalytics[] | null | undefined
 
   const totalIA = rows.reduce((acc, r) => acc + (Number(r.resueltas_ia) || 0), 0);
   const totalHuman = rows.reduce((acc, r) => acc + (Number(r.derivadas_humano) || 0), 0);
-  const pedidosCount = rows.reduce((acc, r) => acc + (Number(r.pedidos_count) || 0), 0);
-  const presupuestosCount = rows.reduce((acc, r) => acc + (Number(r.presupuestos_count) || 0), 0);
+  // Pedido y presupuesto se cuentan juntos (una sola categoria para el cliente)
+  const pedidosCount = rows.reduce(
+    (acc, r) => acc + (Number(r.pedidos_count) || 0) + (Number(r.presupuestos_count) || 0),
+    0
+  );
   const reclamosCount = rows.reduce((acc, r) => acc + (Number(r.reclamos_count) || 0), 0);
   const valorEstimado = rows.reduce((acc, r) => acc + (Number(r.valor_estimado) || 0), 0);
   
@@ -204,7 +206,6 @@ export function calculateSummaryMetrics(rows: ChatAnalytics[] | null | undefined
     horasAhorradas,
     tasaResolucionIA,
     pedidosCount,
-    presupuestosCount,
     reclamosCount,
     valorEstimado,
   };

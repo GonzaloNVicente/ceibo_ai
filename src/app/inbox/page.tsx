@@ -128,6 +128,9 @@ export default function InboxPage() {
     if (typeFilter !== 'all') {
       if (typeFilter === 'uncategorized') {
         result = result.filter(l => !l.query_type);
+      } else if (typeFilter === 'pedido') {
+        // Pedido y presupuesto son una sola categoria (tolera filas viejas 'pedido_presupuesto')
+        result = result.filter(l => l.query_type === 'pedido' || l.query_type === 'pedido_presupuesto');
       } else {
         result = result.filter(l => l.query_type === typeFilter);
       }
@@ -199,12 +202,11 @@ export default function InboxPage() {
               className="h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground shadow-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
             >
               <option value="all">Todos los tipos</option>
-              <option value="pedido_presupuesto">Presupuesto</option>
+              <option value="pedido">Pedido / Presupuesto</option>
               <option value="reclamo">Reclamo</option>
               <option value="consulta_stock">Consulta Stock</option>
               <option value="consulta_precio">Consulta Precio</option>
               <option value="consulta_general">Consulta General</option>
-              <option value="pedido">Pedido</option>
               <option value="uncategorized">Sin categorizar</option>
             </select>
           </div>

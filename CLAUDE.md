@@ -33,7 +33,7 @@ Todas las tablas de negocio tienen `empresa_id` (uuid) y RLS activado:
 - `perfiles` — usuarios, 1:1 con `auth.users` vía `id`, con `empresa_id` y `role`. **Esto es lo que decide qué empresa ve cada usuario al loguearse.**
 - `chat_sessions` — **una fila por (empresa, teléfono)** (índice único `chat_sessions_empresa_phone_uidx`). Es el lead/conversación que alimenta Inbox y Chats. `query_type` y `is_escalated` son "pegajosos" (solo suben, salvo `resolve_chat_session()`).
 - `chat_analytics` — **una fila por consulta** (a propósito: el dashboard cuenta consultas), enlazada a la sesión por `session_id`. Incluye `estimated_amount`.
-- `chat_analytics_daily` — **vista** que agrega `chat_analytics` por día y empresa. El Dashboard lee de acá. Tiene `security_invoker=true` (ver "Seguridad").
+- `chat_analytics_daily` — **vista** que agrega `chat_analytics` por día (en UTC) y empresa. Tiene `security_invoker=true` (ver "Seguridad"). **El Dashboard ya no lee de acá** (solo el modo demo): usa `get_dashboard_metrics()`.
 - `n8n_chat_histories` — mensajes de la conversación (`sender_type`: user | bot | human_agent), `session_id` = `chat_sessions.id`. Solo lo escriben las RPC.
 - `n8n_agent_memory` — memoria del agente LangChain, la escribe el nodo "Postgres Chat Memory". **No tiene `empresa_id`**: por eso la clave de sesión va prefijada `"<empresa_id>:<telefono>"`.
 - `documents` (vector store del RAG), `record_manager`, `tabular_document_rows` (catálogos/precios) — todas con `empresa_id`.
@@ -44,6 +44,7 @@ Todas las tablas de negocio tienen `empresa_id` (uuid) y RLS activado:
 - `chat_open_turn(phone, name, text, empresa_id)` → upsert de la sesión + guarda el mensaje del usuario. **`empresa_id` es obligatorio** (sin default). Solo `service_role`.
 - `chat_close_turn(session_id, bot_text, query_text, query_type, resolution_status, is_escalated, related_product_id, estimated_amount)` → inserta la consulta en `chat_analytics`, el mensaje del bot y actualiza la sesión. Solo `service_role`.
 - `assign_chat_session`, `resolve_chat_session`, `send_human_message` → las usa el front (respetan RLS).
+- `get_dashboard_metrics(p_from date, p_to date, p_granularity 'day'|'week'|'month')` → jsonb con buckets del gráfico, totales del período y del período anterior (misma duración). SECURITY INVOKER (RLS). Las fechas son **locales de la empresa** (`empresas.timezone`), inclusivas. Ver "Dashboard por período".
 - `match_documents(query_embedding, match_count, filter)` → **el filtro debe incluir `empresa_id`** o falla; filtra por la columna `documents.empresa_id`.
 - `delete_knowledge_document`, `update_empresa_settings` → SECURITY DEFINER, requieren sesión (sin acceso `anon`).
 
@@ -109,9 +110,31 @@ En `supabase/migrations/` (se aplican a mano en el SQL Editor de Supabase):
 - `20260929_multitenant_a_additive.sql` — sincroniza el repo con la base (`estimated_amount`, `chat_close_turn` de 8 parámetros), crea `empresa_integrations`, `match_documents` tolerante.
 - `20260929_multitenant_b_strict.sql` — quita defaults, `chat_open_turn` con `empresa_id` obligatorio, `match_documents` estricta.
 - `20260929_multitenant_c_security_fixes.sql` — `security_invoker` en la vista, permisos.
+- `20260929_d_dashboard_metrics.sql` — `get_dashboard_metrics()` y su helper `_dashboard_summary()` (dashboard por período).
+- `20260929_e_pedido_presupuesto.sql` — unifica pedido y presupuesto (ver "Categorías de consulta"), migra los datos y reemplaza las funciones del dashboard (un solo `pedidos_count`).
 - Los cambios hechos en n8n están documentados en `supabase/n8n-multitenant-changes.md`.
 
 Aplicadas todas en `ceibo-test`. `supabase/schema.sql`, `full_setup.sql` y `seed.sql` son de etapas anteriores y **no reflejan** el estado actual.
+
+## Categorías de consulta (`query_type`)
+
+Valores canónicos: `consulta_general`, `consulta_precio`, `consulta_stock`, **`pedido`**, `reclamo`. **Pedido y presupuesto son una sola categoría** (para el cliente ambos son una oportunidad de venta): en la UI se muestra "Pedido / Presupuesto". `normalize_query_type()` acepta `presupuesto`, `pedido_presupuesto`, etc. y siempre guarda `pedido`, así que aunque el LLM de n8n siga distinguiendo, la base y el dashboard las cuentan juntas. Pedido, Reclamo escalan siempre a un humano (`chat_close_turn`).
+
+- **No reintroducir `presupuestos_count`** ni un filtro/etiqueta separada de "Presupuesto". La columna `presupuestos_count` de la vista `chat_analytics_daily` queda en 0 (no se recrea la vista para no perder `security_invoker`).
+- El front tolera filas viejas `pedido_presupuesto` (Inbox y `formatQueryType`).
+
+## Dashboard por período
+
+El cliente elige el período (Hoy, 7/30/90 días, Este mes, Mes pasado, Personalizado) y la agrupación del gráfico (Auto/Día/Semana/Mes). **Todo** —tarjetas, pipeline y gráfico— sale de una única respuesta de `get_dashboard_metrics()`, así que no pueden desincronizarse.
+
+- El período vive en la URL: `/dashboard?rango=30d`, `?rango=custom&desde=YYYY-MM-DD&hasta=YYYY-MM-DD`, `&gran=week`. Sin parámetros = 30 días.
+- Lógica pura y testeada en `src/lib/dashboard-range.ts` (`node tests/e2e/test-dashboard-range.mjs`). Selector en `src/components/dashboard/period-filter.tsx`.
+- Granularidad automática: ≤31 días → día, ≤180 → semana (lunes a domingo), más → mes.
+- Cada tarjeta compara contra el **período anterior de igual duración**.
+- **Definición de pipeline (`valor_estimado`):** suma del **último** monto estimado de cada cliente (sesión) con `pedido` o `pedido_presupuesto` dentro del período. No suma dos veces al cliente que repite el mismo presupuesto. (Antes se sumaba cada consulta.)
+- Los días se cortan en la **zona horaria de la empresa**, no en UTC (antes una consulta a las 22:00 en Argentina caía en el día siguiente).
+- Antes se usaba `.limit(30)` sobre la vista, que tomaba los últimos 30 *días con actividad* y no los últimos 30 días de calendario. `getRecent30Days()` sigue existiendo (lo usa `/api/analytics` y los tests viejos) pero **el dashboard ya no lo usa**.
+- En modo demo (cliente mock) no hay RPC: el resultado se arma en el navegador desde las filas diarias del mock (`buildDashboardFromDailyRows`), y el pipeline es una suma simple.
 
 ## Frontend — rutas
 

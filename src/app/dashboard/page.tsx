@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Boxes,
   LockKeyhole,
@@ -10,6 +10,8 @@ import {
   RefreshCw,
   ShieldCheck,
   Sparkles,
+  TrendingDown,
+  TrendingUp,
 } from 'lucide-react';
 import {
   Area,
@@ -21,11 +23,31 @@ import {
   YAxis,
 } from 'recharts';
 import { Button } from '@/components/ui/button';
+import { PeriodFilter } from '@/components/dashboard/period-filter';
 import { useAuth } from '@/contexts/auth-context';
 import { createClient } from '@/lib/supabase/client';
 import { createTenantScopedClient } from '@/lib/supabase/tenant-client';
-import { ChatAnalytics, SummaryMetrics } from '@/lib/supabase/types';
-import { calculateSummaryMetrics, generateMockAnalytics, MOCK_TENANTS } from '@/lib/supabase/mock-data';
+import { DashboardData } from '@/lib/supabase/types';
+import { MOCK_TENANTS } from '@/lib/supabase/mock-data';
+import {
+  DEFAULT_TIMEZONE,
+  EMPTY_SUMMARY_RAW,
+  autoGranularity,
+  buildRangeQuery,
+  computeDelta,
+  formatBucketLabel,
+  formatBucketTooltip,
+  formatRangeLabel,
+  parseRangeParams,
+  presetTitle,
+  resolveRange,
+  sanitizeCustomRange,
+  todayInTimezone,
+  toSummaryMetrics,
+  type DateRange,
+  type Granularity,
+  type RangePreset,
+} from '@/lib/dashboard-range';
 
 function ActivityTooltip({
   active,
@@ -33,13 +55,13 @@ function ActivityTooltip({
   label,
 }: {
   active?: boolean;
-  payload?: Array<{ value: number; name: string; color: string }>;
+  payload?: Array<{ value: number; name: string; color: string; payload?: { tooltipTitle?: string } }>;
   label?: string;
 }) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-md border border-border bg-card px-3 py-2 shadow-panel">
-      <p className="mb-1.5 text-xs font-bold">{label}</p>
+      <p className="mb-1.5 text-xs font-bold">{payload[0]?.payload?.tooltipTitle ?? label}</p>
       {payload.map((item) => (
         <p key={item.name} className="text-[11px] text-muted-foreground">
           <span className="font-bold text-foreground">{item.value}</span> {item.name}
@@ -49,40 +71,126 @@ function ActivityTooltip({
   );
 }
 
-const MONTH_NAMES = [
-  'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-  'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
-];
+type DeltaTone = 'good' | 'bad' | 'neutral';
+interface DeltaView {
+  text: string;
+  tone: DeltaTone;
+  icon?: 'up' | 'down';
+}
+
+/** Compara con el periodo anterior. `upIsGood=false` deja el color neutro (p. ej. derivadas a humano). */
+function percentDelta(current: number, previous: number, upIsGood: boolean): DeltaView | null {
+  const d = computeDelta(current, previous);
+  switch (d.kind) {
+    case 'none':
+      return null;
+    case 'new':
+      return { text: 'Sin datos en el período anterior', tone: 'neutral' };
+    case 'flat':
+      return { text: 'Sin cambios vs. período anterior', tone: 'neutral' };
+    case 'up':
+      return { text: `${d.pct}% vs. período anterior`, tone: upIsGood ? 'good' : 'neutral', icon: 'up' };
+    case 'down':
+      return { text: `${d.pct}% vs. período anterior`, tone: upIsGood ? 'bad' : 'neutral', icon: 'down' };
+  }
+}
+
+function pointsDelta(current: number, previous: number, hadPrevious: boolean, hasCurrent: boolean): DeltaView | null {
+  if (!hasCurrent && !hadPrevious) return null;
+  if (!hadPrevious) return { text: 'Sin datos en el período anterior', tone: 'neutral' };
+  const diff = current - previous;
+  if (diff === 0) return { text: 'Sin cambios vs. período anterior', tone: 'neutral' };
+  return {
+    text: `${Math.abs(diff)} pts vs. período anterior`,
+    tone: diff > 0 ? 'good' : 'bad',
+    icon: diff > 0 ? 'up' : 'down',
+  };
+}
+
+function DeltaLine({ delta }: { delta: DeltaView | null }) {
+  if (!delta) return <div className="mt-2 h-4" aria-hidden="true" />;
+  const color =
+    delta.tone === 'good' ? 'text-success' : delta.tone === 'bad' ? 'text-destructive' : 'text-muted-foreground';
+  return (
+    <p className={`mt-2 flex h-4 items-center gap-1 text-[11px] font-semibold ${color}`}>
+      {delta.icon === 'up' && <TrendingUp className="size-3.5" strokeWidth={2.2} />}
+      {delta.icon === 'down' && <TrendingDown className="size-3.5" strokeWidth={2.2} />}
+      {delta.text}
+    </p>
+  );
+}
 
 export default function DashboardPage() {
+  // useSearchParams() exige un limite de Suspense en Next 14 (App Router)
+  return (
+    <Suspense fallback={null}>
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
+function DashboardContent() {
   const router = useRouter();
-  const { user, empresa, perfil, loading: authLoading } = useAuth();
+  const searchParams = useSearchParams();
+  const { user, empresa, loading: authLoading } = useAuth();
 
-  // Remove initial mock state to prevent silent fallback when real fetch fails
-  const emptyMetrics = useMemo(() => calculateSummaryMetrics([]), []);
-
-  const [analytics, setAnalytics] = useState<ChatAnalytics[]>([]);
-  const [metrics, setMetrics] = useState<SummaryMetrics>(emptyMetrics);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [loadingData, setLoadingData] = useState(true); // Start loading immediately
   const [errorState, setErrorState] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string>('actualizando...');
   const [mounted, setMounted] = useState(false);
+  const requestId = useRef(0);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // --- Periodo elegido (vive en la URL: se puede compartir y sobrevive a recargar) ---
+  const timezone = empresa?.timezone || DEFAULT_TIMEZONE;
+  const today = useMemo(() => todayInTimezone(timezone), [timezone]);
+  const {
+    preset,
+    range,
+    granularity: manualGranularity,
+  } = useMemo(() => parseRangeParams(searchParams, today), [searchParams, today]);
+  const granularity: Granularity = manualGranularity ?? autoGranularity(range);
+
+  const updateUrl = useCallback(
+    (nextPreset: RangePreset, nextRange: DateRange, nextGranularity: Granularity | null) => {
+      router.replace(`/dashboard?${buildRangeQuery(nextPreset, nextRange, nextGranularity)}`, { scroll: false });
+    },
+    [router]
+  );
+
+  const handlePresetChange = (next: RangePreset) => {
+    if (next === 'custom') {
+      updateUrl('custom', range, manualGranularity);
+    } else {
+      updateUrl(next, resolveRange(next, today), manualGranularity);
+    }
+  };
+
+  const handleCustomRangeChange = (next: DateRange) => {
+    const valid = sanitizeCustomRange(next.from, next.to, today);
+    if (valid) updateUrl('custom', valid, manualGranularity);
+  };
+
+  const handleGranularityChange = (next: Granularity | null) => updateUrl(preset, range, next);
+
+  // --- Carga de datos ---
   const loadDashboardData = useCallback(async () => {
+    const thisRequest = ++requestId.current;
     setLoadingData(true);
     setErrorState(null);
     try {
       const supabase = createClient();
       const tenantClient = createTenantScopedClient(supabase);
-      const rows = await tenantClient.getRecent30Days();
-      setAnalytics(rows);
-      setMetrics(calculateSummaryMetrics(rows));
+      const result = await tenantClient.getDashboardMetrics(range, granularity);
+      if (thisRequest !== requestId.current) return; // llego una respuesta mas nueva
+      setData(result);
       setLastUpdated('hace un momento');
     } catch (err: any) {
+      if (thisRequest !== requestId.current) return;
       console.error('Error fetching dashboard analytics:', err);
       if (err?.message?.includes('UNAUTHORIZED')) {
         router.push('/login');
@@ -90,13 +198,12 @@ export default function DashboardPage() {
       }
       // If it's a real database error, surface it instead of silently failing
       setErrorState(err.message || 'Error desconocido al conectar con la base de datos.');
-      setAnalytics([]);
-      setMetrics(emptyMetrics);
+      setData(null);
       setLastUpdated('error de conexión');
     } finally {
-      setLoadingData(false);
+      if (thisRequest === requestId.current) setLoadingData(false);
     }
-  }, [router, emptyMetrics]);
+  }, [router, range, granularity]);
 
   useEffect(() => {
     if (!authLoading) {
@@ -115,26 +222,39 @@ export default function DashboardPage() {
       ? `CEI-${empresa.id.slice(0, 2).toUpperCase()}-${empresa.id.slice(-6).toUpperCase()}`
       : 'CEI-AR-7F42A9';
 
+  const metrics = useMemo(() => toSummaryMetrics(data?.summary ?? EMPTY_SUMMARY_RAW), [data]);
+  const prevMetrics = useMemo(() => toSummaryMetrics(data?.previous.summary ?? EMPTY_SUMMARY_RAW), [data]);
+
+  const periodName = presetTitle(preset, range);
   const repEquivalent = metrics.horasAhorradas > 0 ? (metrics.horasAhorradas / 160).toFixed(1) : '0.0';
   const humanPercentage = metrics.totalConsultas > 0 ? 100 - metrics.tasaResolucionIA : 0;
+  const leadsConMonto = metrics.leadsConMonto ?? 0;
 
   const metricCards = useMemo(
     () => [
       {
         label: 'Volumen de Consultas',
         value: metrics.totalConsultas.toLocaleString(),
-        note: 'Últimos 30 días de actividad WhatsApp',
+        delta: percentDelta(metrics.totalConsultas, prevMetrics.totalConsultas, true),
+        note: `${periodName} de actividad WhatsApp`,
         tone: 'success' as const,
       },
       {
         label: 'Horas Ahorradas',
         value: `${metrics.horasAhorradas.toFixed(1)} h`,
+        delta: percentDelta(metrics.horasAhorradas, prevMetrics.horasAhorradas, true),
         note: `Equivale a ~${repEquivalent} asesores FTE de ventas liberados`,
         tone: 'neutral' as const,
       },
       {
         label: 'Tasa de Resolución IA',
         value: `${metrics.tasaResolucionIA}%`,
+        delta: pointsDelta(
+          metrics.tasaResolucionIA,
+          prevMetrics.tasaResolucionIA,
+          prevMetrics.totalConsultas > 0,
+          metrics.totalConsultas > 0
+        ),
         detail: `${metrics.totalIA.toLocaleString()} resueltas por IA`,
         note: 'Sin intervención de asesor humano',
         tone: 'success' as const,
@@ -142,10 +262,10 @@ export default function DashboardPage() {
       {
         label: 'Derivadas a Humano',
         value: metrics.totalHuman.toLocaleString(),
+        delta: percentDelta(metrics.totalHuman, prevMetrics.totalHuman, false),
         detail: (
           <div className="flex flex-col gap-1 mt-1 text-foreground/80 font-normal">
-            <div className="flex justify-between items-center text-[11px]"><span>Pedidos:</span> <span className="font-bold">{metrics.pedidosCount}</span></div>
-            <div className="flex justify-between items-center text-[11px]"><span>Presupuestos:</span> <span className="font-bold">{metrics.presupuestosCount}</span></div>
+            <div className="flex justify-between items-center text-[11px]"><span>Pedidos y presupuestos:</span> <span className="font-bold">{metrics.pedidosCount}</span></div>
             <div className="flex justify-between items-center text-[11px]"><span>Reclamos:</span> <span className="font-bold">{metrics.reclamosCount}</span></div>
           </div>
         ),
@@ -153,48 +273,24 @@ export default function DashboardPage() {
         tone: 'ceibo' as const,
       },
     ],
-    [metrics, repEquivalent, humanPercentage]
+    [metrics, prevMetrics, repEquivalent, humanPercentage, periodName]
   );
 
   const chartData = useMemo(() => {
-    if (!analytics || analytics.length === 0) return [];
-    return analytics.map((row, index) => {
-      const cleanDate = (row.date || '').split('T')[0];
-      const parts = cleanDate.split('-');
-      const day = (parts[2] || '01').padStart(2, '0');
-      const monthIdx = parseInt(parts[1] || '1', 10) - 1;
-      const month = MONTH_NAMES[monthIdx] || '';
+    if (!data) return [];
+    return data.buckets.map((b) => ({
+      date: formatBucketLabel(b.date, data.granularity),
+      tooltipTitle: formatBucketTooltip(b.date, data.granularity),
+      fullDate: b.date,
+      ai: b.resueltas_ia,
+      human: b.derivadas_humano,
+      total: b.total_consultas,
+    }));
+  }, [data]);
 
-      const isFirst = index === 0;
-      const isLast = index === analytics.length - 1;
-      const isFirstOfMonth = day === '01';
-
-      let displayDate = `${parseInt(day, 10)}`;
-      if (isFirst || isLast || isFirstOfMonth) {
-        displayDate = `${day} ${month}`;
-      }
-
-      return {
-        date: displayDate,
-        fullDate: row.date,
-        ai: row.resueltas_ia,
-        human: row.derivadas_humano,
-        total: row.total_consultas,
-      };
-    });
-  }, [analytics]);
-
-  const dateRangeStr = useMemo(() => {
-    if (!analytics || analytics.length === 0) return 'Últimos 30 días · 12 Ago a 06 Sep';
-    const firstParts = (analytics[0]?.date || '').split('T')[0].split('-');
-    const lastParts = (analytics[analytics.length - 1]?.date || '').split('T')[0].split('-');
-    if (firstParts.length < 3 || lastParts.length < 3) return 'Últimos 30 días · 12 Ago a 06 Sep';
-    const startDay = firstParts[2].padStart(2, '0');
-    const startMonth = MONTH_NAMES[parseInt(firstParts[1], 10) - 1] || '';
-    const endDay = lastParts[2].padStart(2, '0');
-    const endMonth = MONTH_NAMES[parseInt(lastParts[1], 10) - 1] || '';
-    return `Últimos 30 días · ${startDay} ${startMonth} a ${endDay} ${endMonth}`;
-  }, [analytics]);
+  const dateRangeStr = `${periodName} · ${formatRangeLabel(range)}`;
+  const pipelineDelta = percentDelta(metrics.valorEstimado, prevMetrics.valorEstimado, true);
+  const hasData = metrics.totalConsultas > 0;
 
   return (
     <>
@@ -244,6 +340,18 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Selector de periodo: controla tarjetas, pipeline y grafico */}
+      <PeriodFilter
+        preset={preset}
+        range={range}
+        manualGranularity={manualGranularity}
+        granularity={granularity}
+        today={today}
+        onPresetChange={handlePresetChange}
+        onCustomRangeChange={handleCustomRangeChange}
+        onGranularityChange={handleGranularityChange}
+      />
+
       {/* Highlighted Income Card */}
       <section className="mt-6 overflow-hidden rounded-lg border border-success/40 bg-success/5 shadow-sm p-6 relative">
         <div className="absolute top-0 right-0 p-4 opacity-10">
@@ -254,8 +362,10 @@ export default function DashboardPage() {
           <p className="mt-2 font-display text-4xl sm:text-5xl font-bold text-success">
             {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(metrics.valorEstimado)}
           </p>
+          <DeltaLine delta={pipelineDelta} />
           <p className="font-sans mt-2 max-w-lg text-sm text-muted-foreground">
-            Calculado en tiempo real: cantidad que pidió cada cliente × precio real de tu catálogo.
+            {periodName}: último monto estimado de cada cliente con pedido o presupuesto (cantidad pedida × precio de tu catálogo)
+            {leadsConMonto > 0 ? ` · ${leadsConMonto} ${leadsConMonto === 1 ? 'cliente' : 'clientes'}` : ''}.
           </p>
         </div>
       </section>
@@ -285,8 +395,9 @@ export default function DashboardPage() {
               >
                 {metric.value}
               </p>
+              <DeltaLine delta={metric.delta} />
               <div
-                className={`font-sans mt-3 text-xs font-bold ${
+                className={`font-sans mt-2 text-xs font-bold ${
                   metric.tone === 'success'
                     ? 'text-success'
                     : metric.tone === 'ceibo'
@@ -312,7 +423,9 @@ export default function DashboardPage() {
               <Boxes className="size-5 text-primary" strokeWidth={1.8} />
               <h2 className="font-display text-lg font-bold">Evolución de consultas</h2>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">{dateRangeStr}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {dateRangeStr} · por {granularity === 'day' ? 'día' : granularity === 'week' ? 'semana' : 'mes'}
+            </p>
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-muted-foreground">
             <span className="flex items-center gap-2">
@@ -326,7 +439,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <div
-          className="mt-5 h-[310px] w-full"
+          className="relative mt-5 h-[310px] w-full"
           aria-label="Gráfico de consultas resueltas por IA y derivadas a humano"
         >
           {mounted ? (
@@ -348,12 +461,14 @@ export default function DashboardPage() {
                   axisLine={false}
                   tickLine={false}
                   tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
-                  interval={4}
+                  interval="preserveStartEnd"
+                  minTickGap={24}
                   dy={8}
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
+                  allowDecimals={false}
                   tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                 />
                 <Tooltip
@@ -384,6 +499,13 @@ export default function DashboardPage() {
             </ResponsiveContainer>
           ) : (
             <div className="h-full w-full animate-pulse rounded-md bg-secondary/30" />
+          )}
+          {mounted && !loadingData && !errorState && !hasData && (
+            <div className="pointer-events-none absolute inset-0 grid place-items-center">
+              <p className="rounded-md border border-border bg-card/90 px-4 py-2 text-sm text-muted-foreground shadow-panel">
+                No hay consultas en este período
+              </p>
+            </div>
           )}
         </div>
       </section>
