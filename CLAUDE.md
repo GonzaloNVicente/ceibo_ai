@@ -45,6 +45,7 @@ Todas las tablas de negocio tienen `empresa_id` (uuid) y RLS activado:
 - `chat_close_turn(session_id, bot_text, query_text, query_type, resolution_status, is_escalated, related_product_id, estimated_amount)` → inserta la consulta en `chat_analytics`, el mensaje del bot y actualiza la sesión. Solo `service_role`.
 - `assign_chat_session`, `resolve_chat_session`, `send_human_message` → las usa el front (respetan RLS).
 - `get_dashboard_metrics(p_from date, p_to date, p_granularity 'day'|'week'|'month')` → jsonb con buckets del gráfico, totales del período y del período anterior (misma duración). SECURITY INVOKER (RLS). Las fechas son **locales de la empresa** (`empresas.timezone`), inclusivas. Ver "Dashboard por período".
+- `get_dashboard_overview(p_from date, p_to date, p_granularity 'day'|'week'|'month')` → jsonb con **todo** lo que muestra el dashboard actual (fichas por categoría, tiempo, dinero, buckets y período anterior). SECURITY INVOKER (RLS). Ver "Dashboard Tiempo y Dinero". Requiere la migración F.
 - `match_documents(query_embedding, match_count, filter)` → **el filtro debe incluir `empresa_id`** o falla; filtra por la columna `documents.empresa_id`.
 - `delete_knowledge_document`, `update_empresa_settings` → SECURITY DEFINER, requieren sesión (sin acceso `anon`).
 
@@ -73,6 +74,15 @@ RLS usa `current_user_empresa_id()` y `get_user_empresa_id()` (equivalentes y re
 - Corre en n8n Cloud (`ceibocc.app.n8n.cloud`). Workflow principal: **"HOLY RAG - Conversación copy"** (ID `ZMrhkzMWbCpxBMTd`; la versión "HOLY RAG - Conversación" sin el fix multi-tenant NO usar). Ingesta: **"HOLY RAG - Ingesta"**. Error handler: "Error Handler- HOLY RAG".
 - El workflow historial de n8n guarda versiones: antes de cambios grandes, anotar el `versionId` para poder volver (`restore_workflow_version`).
 - **Blocker recurrente conocido: límite de ejecuciones del plan de n8n Cloud.** Si dejan de llegar mensajes/datos sin motivo aparente, chequear primero el uso del plan (Settings → Usage). Con varios clientes en la misma cuenta, todos consumen la misma cuota.
+
+### Estado del workflow (2026-11-02): BORRADOR ≠ PUBLICADO
+
+- **Publicada (lo que atiende el WhatsApp real):** versión `1d883a46-6671-40c7-9299-b7bbe54137f2` (23/09). **El borrador tiene más cambios sin publicar** (versión `6227397e-0689-438a-a324-267ada449a42`): decisión del equipo, no se publicó todavía. Tampoco están en producción los cambios de septiembre (pedido y presupuesto unificados, presupuesto con varios productos, filtro de temas ajenos). Para volver atrás desde el borrador: `ccc88bbf-d821-4703-94e7-e590cf2cc2be`.
+- **Clasificador** (`Basic LLM Chain1`, corre después del AI Agent): 12 categorías — Precio, Stock, Horarios, Envíos, Pagos, Consulta general, Pedido (incluye presupuesto), Reclamo, Sin datos, Spam, Número equivocado, Sin contenido — con un "paso a paso" obligatorio en orden: Reclamo → Pedido → Sin contenido → Spam / Número equivocado → Sin datos → tema. Se deriva (`is_escalated = true`) Pedido, Reclamo, Sin datos o si el cliente pide hablar con una persona; Spam, Número equivocado y Sin contenido nunca. `Structured Output Parser1`: `query_type` string libre con la lista en la descripción.
+- **Modelo del clasificador:** `OpenAI Chat Model3` pasó de `gpt-4o-mini` a **`gpt-4o`, temperatura 0** (el mini daba resultados inestables y nunca usaba "Sin datos"). Costo aproximado **US$ 0,004 por mensaje** (antes 0,0003): tenerlo en cuenta al calcular el costo por cliente.
+- **Monto de un pedido:** el campo `estimated_quantity` **ya no existe**. El clasificador extrae `items[]` (`producto`, `cantidad`, `precio_unitario`) y `Execute a SQL query2` calcula `estimated_amount = Σ cantidad × precio_unitario`. **Monto "híbrido" (aplicado en el borrador, 2026-11-02):** cada producto se busca en el catálogo (`tabular_document_rows`, coincidencia por nombre con `ILIKE`); si coincide con **exactamente una** fila se usa el **precio del catálogo**, y si hay 0 o varias coincidencias se usa el `precio_unitario` que anotó el LLM como respaldo (así un precio mal leído por el modelo se corrige solo). Sin cantidad no hay monto. Detalle y casos probados en `supabase/n8n-monto-hibrido.md`. Sigue siendo una **estimación** (cantidad que dijo el cliente × precio de lista, no una venta cerrada). Limitaciones: un nombre informal ("bolsa de cemento") o ambiguo cae en el precio del modelo, y **la consulta no filtra por `empresa_id`**: solo ve el catálogo del tenant de prueba porque usa la credencial de solo lectura (`ceibo_readonly`, limitada por RLS a ese tenant). **Antes de sumar un segundo cliente** hay que usar su propia credencial de solo lectura o agregar `t.empresa_id = <empresa del CONFIG>` a la consulta. `related_product_id` ahora es la lista de productos separada por comas.
+- Los **stickers e imágenes nunca llegan al clasificador** (el nodo "Solo mensajes de texto" los descarta): "Sin contenido" cubre solo texto como "hola" o 👍.
+- Las ejecuciones de prueba crean leads en **Zoho CRM** (nodo "Create a lead"): quedaron 19 de prueba llamados "QA Clasif ..." para borrar a mano.
 
 ### Reglas al tocar nodos
 
@@ -112,52 +122,63 @@ En `supabase/migrations/` (se aplican a mano en el SQL Editor de Supabase):
 - `20260929_multitenant_c_security_fixes.sql` — `security_invoker` en la vista, permisos.
 - `20260929_d_dashboard_metrics.sql` — `get_dashboard_metrics()` y su helper `_dashboard_summary()` (dashboard por período).
 - `20260929_e_pedido_presupuesto.sql` — unifica pedido y presupuesto (ver "Categorías de consulta"), migra los datos y reemplaza las funciones del dashboard (un solo `pedidos_count`).
+- `20261102_f_dashboard_overview.sql` — clasificador ampliado (`normalize_query_type`, `query_type_rank`, `chat_close_turn`) y `get_dashboard_overview()` para el dashboard "Tiempo y Dinero". **Aplicada** (2026-11-02).
 - Los cambios hechos en n8n están documentados en `supabase/n8n-multitenant-changes.md`.
 
-Aplicadas todas en `ceibo-test`. `supabase/schema.sql`, `full_setup.sql` y `seed.sql` son de etapas anteriores y **no reflejan** el estado actual.
+Aplicadas todas en `ceibo-test` (la F el 2026-11-02; verificada con `get_dashboard_overview()` ejecutada con el rol `authenticated`, o sea bajo RLS). Ojo: de `chat_close_turn` sigue existiendo la **sobrecarga vieja de 7 parámetros** (sin `sin_datos` ni "sin valor"); el workflow usa la de 8, la vieja es código muerto. `supabase/schema.sql`, `full_setup.sql` y `seed.sql` son de etapas anteriores y **no reflejan** el estado actual.
 
 ## Categorías de consulta (`query_type`)
 
-Valores canónicos: `consulta_general`, `consulta_precio`, `consulta_stock`, **`pedido`**, `reclamo`. **Pedido y presupuesto son una sola categoría** (para el cliente ambos son una oportunidad de venta): en la UI se muestra "Pedido / Presupuesto". `normalize_query_type()` acepta `presupuesto`, `pedido_presupuesto`, etc. y siempre guarda `pedido`, así que aunque el LLM de n8n siga distinguiendo, la base y el dashboard las cuentan juntas. Pedido, Reclamo escalan siempre a un humano (`chat_close_turn`).
+Valores canónicos (los guarda `normalize_query_type()`, que también acepta el texto natural que mande el LLM de n8n):
 
-- **No reintroducir `presupuestos_count`** ni un filtro/etiqueta separada de "Presupuesto". La columna `presupuestos_count` de la vista `chat_analytics_daily` queda en 0 (no se recrea la vista para no perder `security_invoker`).
-- El front tolera filas viejas `pedido_presupuesto` (Inbox y `formatQueryType`).
+| `query_type` | Qué es | ¿Se deriva a un humano? |
+|---|---|---|
+| `pedido` | Pedido **o presupuesto** (una sola categoría: para el cliente ambos son una oportunidad de venta) | Siempre |
+| `reclamo` | Reclamo | Siempre |
+| `sin_datos` | El bot no tenía información para responder | Siempre |
+| `consulta_precio`, `consulta_stock`, `consulta_horarios`, `consulta_envios`, `consulta_pagos`, `consulta_general` | Consultas que el bot resuelve | Solo si el bot lo marca (cliente pide hablar con una persona) |
+| `spam`, `numero_equivocado`, `sin_contenido` | **Sin valor** (publicidad, número equivocado, saludos/stickers) | **Nunca**; no cuentan como tiempo ahorrado |
 
-## Dashboard por período
+- **Pedido y presupuesto son una sola categoría.** En la UI se muestra "Pedido / Presupuesto". **No reintroducir `presupuestos_count`** ni un filtro/etiqueta separada. La columna `presupuestos_count` de la vista `chat_analytics_daily` queda en 0 (no se recrea la vista para no perder `security_invoker`). El front tolera filas viejas `pedido_presupuesto`.
+- `chat_close_turn` aplica la regla de derivación (pedido, reclamo y `sin_datos` siempre; `sin_valor` nunca). `query_type_rank` decide la categoría "pegajosa" de la sesión; lo "sin valor" no pisa a la categoría real.
+- **El clasificador de n8n ya manda las 12 categorías, pero solo en el BORRADOR del workflow** (ver sección n8n: lo publicado sigue siendo la versión del 23/09). Mientras no se publique, el bot real no usa las categorías nuevas: los datos reales caen en "Otras consultas" y "Sin valor" queda en 0. Los 33 registros que hoy hay en `chat_analytics` son todos de las categorías viejas. Guía y prompt: `supabase/n8n-clasificador-categorias.md`.
 
-### Diseño ("Dos protagonistas") — `src/app/dashboard/page.tsx`
+## Dashboard "Tiempo y Dinero"
 
-Una sola pantalla de escritorio, sin scroll: encabezado compacto con el selector de período → dos tarjetas protagonistas (**Tiempo ahorrado** y **Pedidos derivados**) → fila inferior (**gráfico de consultas** + **lista de pedidos derivados**). Componentes en `src/components/dashboard/`: `time-saved-card`, `pedidos-card`, `activity-chart` (barras apiladas en HTML/CSS, sin Recharts), `derived-orders-list`, `period-filter` (control segmentado).
+Diseño de los profesores mentores (referencia: `Dashboard.dc.html`, un único componente con `tab` = tiempo|dinero y `status` = ok|loading|empty|error). **Se copió fiel, solo dentro del dashboard:** tipografía **Inter** y paleta azul/verde/rojo estilo Apple, aisladas bajo `.cb-dash` (`src/app/dashboard/dashboard.css`; la fuente se carga en `src/app/dashboard/layout.tsx`). El resto de la app sigue con Sora/Manrope y su paleta.
 
-- **El período elegido cambia todo:** tarjetas, gráfico grande y lista. Períodos visibles: Hoy, 7 días, 30 días, Este mes, Personalizado (90 días y Mes pasado siguen funcionando por URL y aparecen como un segmento extra cuando están activos).
-- **El gráfico grande sigue el período:** cambian el título ("Consultas de los últimos 30 días", "…de este mes", "…del 5 Sep al 20 Sep"), la escala y la agrupación (≤31 días por día, ≤180 por semana, más por mes). Con **"Hoy"** (un solo día) muestra los 7 días que terminan hoy. Con más de 16 barras se ocultan los totales y se muestran ~8 etiquetas del eje.
-- **El mini gráfico verde y el total "últimos 7 días"** de la tarjeta de tiempo ahorrado son **siempre los 7 días que terminan en el último día del período** (segunda llamada a `get_dashboard_metrics`, salvo que el período ya sea de 7 días).
-- **Tarjeta de pedidos:** cuenta `chat_sessions` de tipo `pedido` con `resolution_status = 'derivado'` y actividad (`last_message_at`, en la zona horaria de la empresa) dentro del período; "Sin asignar" = `assigned_to` nulo. El **valor estimado** es la suma de `chat_sessions.estimated_amount` de esas mismas sesiones (coincide con la lista). No usa el `valor_estimado` de la función SQL.
-- **Lista de pedidos:** `related_product_id` llega mezclado desde el bot (código `COR-001`, texto libre o lista con comas). Se traduce con el catálogo (`getProductCatalog()` → `tabular_document_rows`) y las listas se resumen ("X y 2 más"). La cantidad pedida no se guarda, no se muestra. Teléfonos enmascarados (`+54 9 336 ••• 3664`).
-- **Tiempo real:** refresco cada 60 s, suscripción a cambios de `chat_sessions` (con debounce) y "actualizado hace X min" clickeable.
-- **Tiempo ahorrado:** `MINUTES_SAVED_PER_AI_RESOLUTION` (12 min) vive solo en `src/lib/constants.ts`; menos de 60 min se muestra en minutos, desde una hora en horas con coma ("3,6 h"). La base lo repite en SQL (`* 0.2`): si se cambia, cambiar ambos.
-- Los helpers de formato (es-AR, teléfono, tiempo relativo, producto) están en `src/lib/format.ts` con tests (`node tests/e2e/test-dashboard-format.mjs`).
+Estructura de `src/app/dashboard/page.tsx` (de arriba abajo):
+1. Línea de contexto ("Ceibo AI Tech Solutions · ● Asistente activo · actualizado hace X") + selector de período (Hoy, 7 días, 30 días, Este mes, Personalizado; 90 días y Mes pasado funcionan por URL).
+2. **"Qué hizo Ceibo con cada consulta"**: 6 fichas que **suman el total** (recibidas, resueltas solo por Ceibo, posibles ventas derivadas, reclamos derivados, sin datos para responder, sin valor). "Resueltas" y "Sin valor" abren un desglose (Escape o click afuera lo cierra).
+3. **Dos tarjetas-pestaña** (Tiempo azul / Dinero verde). La pestaña activa vive en la URL: `?vista=dinero` (por defecto Tiempo).
+4. **Detalle de la pestaña activa**: Tiempo = gráfico de horas devueltas por período + "Sin Ceibo y con Ceibo" + velocidad de respuesta / % sin intervención / llegaron al equipo. Dinero = gráfico del valor por período + reparto con vendedor / sin asignar (con link "Asignar vendedor" a `/inbox`) + pedido promedio / pedidos nuevos vs. anterior / esperando a un vendedor.
+5. Pie "Cómo calculamos estos números" + **Descargar informe** (= `window.print()` con CSS de impresión: oculta el menú y la barra superior, muestra **las dos vistas** y se guarda como PDF).
 
-### Período y datos
+Estados: cargando (esqueletos; el refresco de fondo no parpadea), sin datos (sugiere un período MÁS largo, nunca el ya elegido), error de conexión (banner con "Reintentar"; **el banner de error debe seguir visible**, ver bug 5). **Modo oscuro: los colores están preparados** (`.cb-dash[data-theme='dark']`) pero **no se activa** hasta que toda la app lo soporte.
 
-- El período vive en la URL: `/dashboard?rango=30d`, `?rango=custom&desde=YYYY-MM-DD&hasta=YYYY-MM-DD`, `&gran=week` (la agrupación manual ya no tiene control en pantalla). Sin parámetros = 30 días.
-- Lógica pura y testeada en `src/lib/dashboard-range.ts` (`node tests/e2e/test-dashboard-range.mjs`).
-- Las métricas salen de `get_dashboard_metrics()`, así que tarjetas y gráfico no pueden desincronizarse. La tarjeta de tiempo ahorrado compara contra el **período anterior de igual duración** (solo si hay una variación calculable).
-- **Definición de pipeline en la función SQL (`valor_estimado`):** suma del **último** monto estimado de cada cliente (sesión) con `pedido` dentro del período. No suma dos veces al cliente que repite el mismo presupuesto. (El dashboard actual no lo muestra: ver "Tarjeta de pedidos".)
-- Los días se cortan en la **zona horaria de la empresa**, no en UTC (antes una consulta a las 22:00 en Argentina caía en el día siguiente).
-- Antes se usaba `.limit(30)` sobre la vista, que tomaba los últimos 30 *días con actividad* y no los últimos 30 días de calendario. `getRecent30Days()` sigue existiendo (lo usa `/api/analytics` y los tests viejos) pero **el dashboard ya no lo usa**.
-- En modo demo (cliente mock) no hay RPC: el resultado se arma en el navegador desde las filas diarias del mock (`buildDashboardFromDailyRows`), y el pipeline es una suma simple.
+Componentes en `src/components/dashboard/`: `tiles-row`, `focus-tabs`, `panels` (`TimePanel`, `MoneyPanel`, gráfico y tarjetas), `states`, `period-filter`, `icons`. La lógica pura (números, dinero, gráficos, fichas) está en `src/lib/dashboard-overview.ts`, con tests (`node tests/e2e/test-dashboard-overview.mjs`).
+
+### Datos y definiciones
+
+- **Una sola llamada** por período: `get_dashboard_overview(p_from, p_to, p_granularity)` (migración F), que devuelve fichas, tiempo, dinero, buckets del gráfico y el período anterior. Fechas **locales de la empresa** (`empresas.timezone`), no UTC. El período vive en la URL (`?rango=30d`, `?rango=custom&desde=…&hasta=…`, `&vista=dinero`); sin parámetros = 30 días.
+- **Unidad: la consulta** (una fila de `chat_analytics` = un mensaje de cliente que el bot respondió). Cada consulta cae en **una sola categoría** (por eso las fichas suman): pedido → ventas · reclamo → reclamos · spam/equivocado/sin contenido → sin valor · derivada por otro motivo → sin datos · el resto → resueltas.
+- **Horas devueltas** = consultas **resueltas solo por Ceibo** × 12 min (`MINUTES_SAVED_PER_AI_RESOLUTION` en `src/lib/constants.ts`; la base lo repite como `* 0.2`: si se cambia, cambiar ambos). **No cuenta** las "sin valor". Jornadas = horas ÷ 8. Menos de 60 min se muestra en minutos.
+- **"Llegaron a tu equipo"** = ventas + reclamos + sin datos. **"Se resuelven sin intervención"** = el resto (incluye lo sin valor). "Sin Ceibo / Con Ceibo" = 100% vs. lo que llega al equipo.
+- **Velocidad de respuesta** = mediana REAL, en segundos, entre el mensaje del cliente y la respuesta del bot (`n8n_chat_histories`, pares de menos de 10 min). No es una suposición.
+- **Dinero** se cuenta **por cliente (sesión)**: último monto estimado de cada cliente con pedido en el período (no suma dos veces al que repite el presupuesto). El valor de cada cliente se atribuye al bucket de su **primer** pedido, para que **la suma de las barras = el total**. "Sin asignar" = pedido abierto (`resolution_status = 'derivado'`) sin `assigned_to`; "con vendedor" = el resto. Los **conteos** de ventas son por consulta (coinciden con la ficha); el **pedido promedio** = valor ÷ clientes con monto. Solo hay monto cuando el cliente menciona una cantidad.
+- **Período anterior** de igual duración, para "▲ 18% vs. período anterior" (solo si hay una variación calculable).
+- **Modo demo** (cliente mock, sin RPC): la misma estructura se arma en el navegador desde las filas diarias (`buildOverviewFromDailyRows`); las categorías se reparten para que también sumen el total.
+- Código anterior que ya no usa el dashboard pero sigue en el repo: `get_dashboard_metrics()` (migración D), `getDashboardMetrics`, `getRecent30Days`, `getEscalatedOrders`, `getProductCatalog` y los helpers `maskPhone` / `summarizeProduct`.
 
 ## Semántica de color
 
-**Bueno = verde, malo = rojo.** Un mismo color significa lo mismo en toda la app.
+**Fuera del dashboard** (Inbox, Chats, barra lateral, etc.): **bueno = verde, malo = rojo.** Un mismo color significa lo mismo.
 
-- **Verde (`success`)**: resultados buenos y dinero. Consultas resueltas por la IA, tiempo ahorrado, pedidos derivados ("listos para cerrar"), valor estimado, montos, "Con un vendedor", "Atendido", "0 reclamos", asistente activo. **Verde claro (`success-light`)**: token disponible para distinguir dos series verdes (hoy sin uso).
-- **Rojo (`negative`)**: lo malo o lo que pide acción. Reclamos (si hay), "Sin asignar", "Pendiente"/"Atención requerida" (Inbox y Chats), el contador de pendientes de la barra lateral, errores de conexión. `Badge variant="destructive"` usa este rojo. (`destructive` sigue para banners y toasts de error.)
-- **Terracota (`ceibo` / `primary`)**: **marca e identidad** — logo, botón principal ("Entrenar asistente"), login, landing, etiqueta del plan y burbujas del asesor en Chats. **Excepción pedida por el dueño:** el chip de **reclamos** del gráfico de consultas va en terracota. Fuera de eso, no usarla para indicar estado.
-- **Azul (`info`, texto chico `info-strong`)**: informativo, ni bueno ni malo. En el gráfico de consultas las **resueltas por la IA** van en azul (barras, leyenda y chip "% resueltas por la IA") y las **derivadas a vendedor** en verde (son oportunidad de venta).
-- Amarillo/ámbar (`Badge variant="warning"`): estados intermedios ("Sin clasificar", "Bot Pausado").
-- Tokens en `src/app/globals.css` (`--success`, `--success-light`, `--negative`) y `tailwind.config.ts`. Ambos superan contraste 4.5:1 sobre blanco para texto; usar `text-negative` (no `text-destructive`) para texto chico en rojo.
+- **Verde (`success`)**: resultados buenos y dinero ("Atendido", "Con un vendedor"). **Rojo (`negative`)**: lo malo o lo que pide acción ("Pendiente", "Atención requerida", contador de pendientes de la barra lateral, errores de conexión). `Badge variant="destructive"` usa este rojo; `destructive` sigue para banners y toasts de error.
+- **Terracota (`ceibo` / `primary`)**: **marca e identidad** — logo, botón principal, login, landing, etiqueta del plan y burbujas del asesor en Chats. No usarla para indicar estado.
+- **Azul (`info`, texto chico `info-strong`)** y **ámbar** (`Badge variant="warning"`): informativo / estados intermedios.
+- Tokens en `src/app/globals.css` (`--success`, `--success-light`, `--negative`, `--info`) y `tailwind.config.ts`. Usar `text-negative` (no `text-destructive`) para texto chico en rojo.
+- **El dashboard tiene su propia paleta** (variables `--blue`, `--green`, `--red` bajo `.cb-dash`): ahí azul = Tiempo, verde = Dinero y lo bueno, rojo = lo malo.
 
 ## Barra lateral plegable
 

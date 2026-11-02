@@ -1,5 +1,9 @@
 # Cambios multi-tenant en el workflow de n8n
 
+> **Nota (2026-11-02):** el cambio 5 (`Execute a SQL query2` con `estimated_quantity`) quedó **superado**: hoy el nodo recibe
+> `items[]` del clasificador y calcula el monto como Σ cantidad × precio unitario. Ver `CLAUDE.md` → "Estado del workflow".
+> Los cambios 1 a 4 (`CONFIG`, `empresa_id` en "Abrir turno", clave de memoria y filtro del vector store) siguen vigentes.
+
 Workflow: **HOLY RAG - Conversación copy** (`ZMrhkzMWbCpxBMTd`). Todos son compatibles con la base
 actual (migración A aplicada, B todavía no). Guardá primero una versión del workflow para poder volver.
 
