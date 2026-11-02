@@ -4,15 +4,14 @@ import { cn } from "@/lib/utils";
 export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {}
 
+// Estilo del campo definido en globals.css (.ui-field): relleno gris, sin borde, foco azul.
+// Los <select> y <textarea> usan la misma clase para verse iguales.
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type = "text", ...props }, ref) => {
     return (
       <input
         type={type}
-        className={cn(
-          "flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground shadow-xs transition-colors placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
+        className={cn("ui-field", className)}
         ref={ref}
         {...props}
       />

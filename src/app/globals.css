@@ -2,93 +2,133 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Ceibo AI - Sistema de diseño
+ *
+ * Estandar tomado del dashboard "Tiempo y Dinero" (diseño de los profesores mentores) y aplicado a
+ * toda la app: tipografia Inter, superficies blancas sobre gris claro, sombras suaves, esquinas
+ * redondeadas, controles tipo pastilla. Tema CLARO (por defecto) y OSCURO (clase `.dark` en <html>).
+ *
+ * Los colores se declaran aca y Tailwind los lee con `color-mix` (tailwind.config.ts), asi que cualquier
+ * formato sirve (hex, rgba). No hardcodear colores en los componentes: usar los tokens.
+ *
+ * Semantica: VERDE (success) = bueno/dinero · ROJO (negative) = malo / pide accion ·
+ *            AZUL (primary / info) = accion e informacion · NARANJA (warning) = estado intermedio ·
+ *            TERRACOTA (ceibo) = SOLO el logo de la marca.
+ */
+
 @layer base {
   :root {
-    --radius: 0.5rem;
-    --background: oklch(0.976 0.006 145.1);
-    --foreground: oklch(0.244 0.028 169.1);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.244 0.028 169.1);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.244 0.028 169.1);
-    --primary: oklch(0.555 0.163 33.5);
-    --primary-foreground: oklch(0.982 0.006 145.1);
-    --secondary: oklch(0.922 0.008 147.2);
-    --secondary-foreground: oklch(0.244 0.028 169.1);
-    --muted: oklch(0.922 0.008 147.2);
-    --muted-foreground: oklch(0.494 0.025 167.3);
-    --accent: oklch(0.368 0.041 166.1);
-    --accent-foreground: oklch(0.982 0.006 145.1);
-    --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: oklch(0.984 0.003 247.858);
-    --border: oklch(0.87 0.009 147.4);
-    --input: oklch(0.87 0.009 147.4);
-    --ring: oklch(0.555 0.163 33.5);
-    --success: oklch(0.49 0.103 162.1);
-    --success-foreground: oklch(0.982 0.006 145.1);
-    /* Semantica de color: BUENO = verde (success), MALO = rojo (negative). La terracota (ceibo/primary) es solo marca. */
-    --success-light: oklch(0.68 0.12 162);
-    --negative: oklch(0.52 0.205 27.3);
-    /* Informativo (azul): p. ej. consultas resueltas por la IA en el grafico */
-    --info: oklch(0.6 0.13 250);
-    --info-strong: oklch(0.5 0.14 250); /* texto chico sobre fondo claro (contraste >= 4.5:1) */
-    --ceibo: oklch(0.555 0.163 33.5);
-    --ceibo-soft: oklch(0.94 0.025 36.5);
-    --grid-line: oklch(0.87 0.009 147.4 / 62%);
-    --shadow-action: 0 4px 0 oklch(0.41 0.117 33.5);
-    --shadow-panel: 0 16px 44px -34px oklch(0.244 0.028 169.1 / 42%);
-    --chart-1: oklch(0.646 0.222 41.116);
-    --chart-2: oklch(0.6 0.118 184.704);
-    --chart-3: oklch(0.398 0.07 227.392);
-    --chart-4: oklch(0.828 0.189 84.429);
-    --chart-5: oklch(0.769 0.188 70.08);
-    --sidebar: oklch(0.244 0.028 169.1);
-    --sidebar-foreground: oklch(0.922 0.008 147.2);
-    --sidebar-primary: oklch(0.555 0.163 33.5);
-    --sidebar-primary-foreground: oklch(0.982 0.006 145.1);
-    --sidebar-accent: oklch(0.368 0.041 166.1);
-    --sidebar-accent-foreground: oklch(0.982 0.006 145.1);
-    --sidebar-border: oklch(1 0 0 / 12%);
-    --sidebar-ring: oklch(0.555 0.163 33.5);
+    --radius: 0.75rem; /* 12px; controles = radius - 2px; tarjetas = 22px (rounded-card) */
+
+    --background: #F5F5F7;
+    --foreground: #1D1D1F;
+    --card: #FFFFFF;
+    --card-foreground: #1D1D1F;
+    --popover: #FFFFFF;
+    --popover-foreground: #1D1D1F;
+
+    --primary: #0071E3;
+    --primary-foreground: #FFFFFF;
+    --secondary: rgba(118, 118, 128, 0.12);
+    --secondary-foreground: #1D1D1F;
+    --muted: rgba(118, 118, 128, 0.12);
+    --muted-foreground: #6E6E73;
+    --accent: rgba(0, 113, 227, 0.12);
+    --accent-foreground: #0066CC;
+
+    --destructive: #D70015;
+    --destructive-foreground: #FFFFFF;
+    --border: rgba(60, 60, 67, 0.14);
+    --input: rgba(118, 118, 128, 0.12);
+    --ring: rgba(0, 113, 227, 0.55);
+
+    --success: #1A7431; /* verde con buen contraste como texto; el relleno claro es --success-light */
+    --success-foreground: #FFFFFF;
+    --success-light: #34C759;
+    --negative: #D70015;
+    --info: #007AFF;
+    --info-strong: #005BB8;
+    --warning: #B82E00;
+
+    --ceibo: #C2452D; /* terracota: solo el logo */
+    --ceibo-soft: #FBEBE7;
+
+    --grid-line: rgba(60, 60, 67, 0.14);
+    --shadow-action: 0 1px 2px rgba(0, 0, 0, 0.10);
+    --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 28px rgba(0, 0, 0, 0.05);
+    --shadow-hi: 0 2px 4px rgba(0, 0, 0, 0.05), 0 18px 44px rgba(0, 0, 0, 0.10);
+
+    --chart-1: #007AFF;
+    --chart-2: #34C759;
+    --chart-3: #FF9500;
+    --chart-4: #AF52DE;
+    --chart-5: #FF3B30;
+
+    /* Menu lateral claro, estilo Apple: gris suave con el item activo en blanco */
+    --sidebar: #ECECEF;
+    --sidebar-foreground: #3C3C43;
+    --sidebar-primary: #0071E3;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: #FFFFFF;
+    --sidebar-accent-foreground: #1D1D1F;
+    --sidebar-border: rgba(60, 60, 67, 0.12);
+    --sidebar-ring: rgba(0, 113, 227, 0.55);
   }
 
   .dark {
-    --background: oklch(0.129 0.042 264.695);
-    --foreground: oklch(0.984 0.003 247.858);
-    --card: oklch(0.208 0.042 265.755);
-    --card-foreground: oklch(0.984 0.003 247.858);
-    --popover: oklch(0.208 0.042 265.755);
-    --popover-foreground: oklch(0.984 0.003 247.858);
-    --primary: oklch(0.929 0.013 255.508);
-    --primary-foreground: oklch(0.208 0.042 265.755);
-    --secondary: oklch(0.279 0.041 260.031);
-    --secondary-foreground: oklch(0.984 0.003 247.858);
-    --muted: oklch(0.279 0.041 260.031);
-    --muted-foreground: oklch(0.704 0.04 256.788);
-    --accent: oklch(0.279 0.041 260.031);
-    --accent-foreground: oklch(0.984 0.003 247.858);
-    --destructive: oklch(0.704 0.191 22.216);
-    --destructive-foreground: oklch(0.984 0.003 247.858);
-    --success-light: oklch(0.6 0.12 162);
-    --negative: oklch(0.704 0.191 22.216);
-    --info: oklch(0.7 0.12 250);
-    --info-strong: oklch(0.78 0.11 250);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.551 0.027 264.364);
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
-    --sidebar: oklch(0.208 0.042 265.755);
-    --sidebar-foreground: oklch(0.984 0.003 247.858);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-    --sidebar-accent: oklch(0.279 0.041 260.031);
-    --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.551 0.027 264.364);
+    --background: #000000;
+    --foreground: #F5F5F7;
+    --card: #1C1C1E;
+    --card-foreground: #F5F5F7;
+    --popover: #2C2C2E;
+    --popover-foreground: #F5F5F7;
+
+    --primary: #0A74E6;
+    --primary-foreground: #FFFFFF;
+    --secondary: rgba(118, 118, 128, 0.24);
+    --secondary-foreground: #F5F5F7;
+    --muted: rgba(118, 118, 128, 0.24);
+    --muted-foreground: #98989D;
+    --accent: rgba(10, 132, 255, 0.24);
+    --accent-foreground: #7AB8FF;
+
+    --destructive: #FF453A;
+    --destructive-foreground: #FFFFFF;
+    --border: rgba(84, 84, 88, 0.6);
+    --input: rgba(118, 118, 128, 0.24);
+    --ring: rgba(10, 132, 255, 0.6);
+
+    --success: #30D158;
+    --success-foreground: #04140A;
+    --success-light: #30D158;
+    --negative: #FF6961;
+    --info: #0A84FF;
+    --info-strong: #4DA3FF;
+    --warning: #FFB340;
+
+    --ceibo: #D9583F;
+    --ceibo-soft: rgba(217, 88, 63, 0.18);
+
+    --grid-line: rgba(84, 84, 88, 0.6);
+    --shadow-action: 0 0 #0000;
+    --shadow-panel: 0 0 #0000;
+    --shadow-hi: 0 0 0 1px rgba(255, 255, 255, 0.10), 0 18px 44px rgba(0, 0, 0, 0.5);
+
+    --chart-1: #0A84FF;
+    --chart-2: #30D158;
+    --chart-3: #FF9F0A;
+    --chart-4: #BF5AF2;
+    --chart-5: #FF453A;
+
+    --sidebar: #111113;
+    --sidebar-foreground: #98989D;
+    --sidebar-primary: #0A84FF;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: #2C2C2E;
+    --sidebar-accent-foreground: #F5F5F7;
+    --sidebar-border: rgba(84, 84, 88, 0.45);
+    --sidebar-ring: rgba(10, 132, 255, 0.6);
   }
 }
 
@@ -96,19 +136,61 @@
   * {
     @apply border-border;
   }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
   body {
     @apply bg-background text-foreground antialiased font-sans;
-    letter-spacing: 0;
-    font-feature-settings: "tnum" 1, "ss01" 1;
+    letter-spacing: -0.006em;
+    font-feature-settings: "cv11" 1;
+    -webkit-font-smoothing: antialiased;
   }
   button, a {
     -webkit-tap-highlight-color: transparent;
   }
+  ::selection {
+    background: rgba(0, 113, 227, 0.22);
+  }
+}
+
+@layer components {
+  /* Campo de formulario (input, select, textarea): relleno gris, sin borde, foco azul */
+  .ui-field {
+    @apply h-10 w-full rounded-[10px] border border-transparent bg-secondary px-3.5 text-sm text-foreground transition-colors;
+    @apply placeholder:text-muted-foreground;
+    @apply focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/20;
+    @apply disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  /* Titulo de pagina y etiqueta de campo, iguales en todas las pantallas */
+  .ui-page-title {
+    @apply text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-[34px];
+  }
+  .ui-label {
+    @apply text-[13px] font-semibold text-foreground;
+  }
+  /* Control segmentado (periodos, filtros): contenedor gris con el item activo en blanco */
+  .ui-seg {
+    @apply inline-flex max-w-full gap-0.5 overflow-x-auto rounded-[10px] bg-secondary p-0.5;
+  }
+  .ui-seg-item {
+    @apply inline-flex min-h-8 items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 text-[13px] font-medium text-foreground transition-colors;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+  }
+  .ui-seg-item[aria-pressed='true'] {
+    @apply bg-card font-semibold shadow-sm;
+  }
+  .dark .ui-seg-item[aria-pressed='true'] {
+    @apply bg-[#48484A] shadow-none;
+  }
 }
 
 @layer utilities {
+  /* La tipografia de titulos es la misma Inter (el diseño nuevo no usa una fuente aparte) */
   .font-display {
-    font-family: var(--font-display), system-ui, sans-serif !important;
+    font-family: var(--font-sans), system-ui, sans-serif !important;
   }
   .live-pulse {
     animation: live-pulse 1.8s ease-in-out infinite;

@@ -1,8 +1,9 @@
 /*
  * Ceibo AI - Dashboard "Tiempo y Dinero"
  * Estilos portados del diseño de los profesores (referencia: Dashboard.dc.html).
- * Todo vive bajo .cb-dash: no toca el resto de la app. El modo oscuro esta PREPARADO
- * ([data-theme="dark"]) pero no se activa hasta que toda la app lo soporte.
+ * Todo vive bajo .cb-dash. Su paleta es la MISMA que los tokens globales (globals.css): este diseño fue
+ * el origen del sistema de diseño de toda la app. El modo oscuro se activa con la clase `dark` de <html>
+ * (interruptor de la barra superior), igual que en el resto de la app.
  */
 
 .cb-dash {
@@ -21,7 +22,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', var(--font-inter), Inter, system-ui, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', var(--font-sans), Inter, system-ui, sans-serif;
   color: var(--text);
   font-size: 14px;
   line-height: 1.45;
@@ -30,7 +31,7 @@
   -webkit-font-smoothing: antialiased;
 }
 
-.cb-dash[data-theme='dark'] {
+.dark .cb-dash {
   color-scheme: dark;
   --bg: #000000; --card: #1C1C1E; --text: #F5F5F7; --text2: #98989D;
   --sep: rgba(84, 84, 88, 0.6); --fill: rgba(118, 118, 128, 0.24); --seg: #636366; --skel: rgba(118, 118, 128, 0.3);

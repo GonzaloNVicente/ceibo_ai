@@ -78,14 +78,14 @@ export default function SettingsPage() {
     <div className="space-y-6 max-w-6xl pb-10">
       <div>
         <div className="mb-2.5 flex items-center gap-2">
-          <span className="rounded bg-ceibo-soft px-2 py-1 text-[10px] font-bold text-ceibo">
+          <span className="rounded-full bg-info/10 px-2.5 py-0.5 text-[10px] font-bold text-info-strong">
             ENTERPRISE CONFIG
           </span>
           <span className="text-xs text-muted-foreground font-mono">
             {empresa?.name || 'Cargando...'}
           </span>
         </div>
-        <h1 className="font-display text-3xl font-bold leading-tight sm:text-4xl text-foreground">
+        <h1 className="ui-page-title">
           Configuración del Sistema
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -95,7 +95,7 @@ export default function SettingsPage() {
 
       <div className="flex flex-col md:flex-row gap-6 items-start">
         <aside className="w-full md:w-60 shrink-0">
-          <nav className="flex flex-row md:flex-col gap-1.5 p-1.5 rounded-lg border border-border bg-card shadow-panel overflow-x-auto">
+          <nav className="flex flex-row md:flex-col gap-1 p-1.5 rounded-card bg-card shadow-panel overflow-x-auto">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               const Icon = tab.icon;
@@ -104,10 +104,10 @@ export default function SettingsPage() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    'flex h-10 items-center gap-2.5 rounded-md px-3 text-sm font-semibold transition-colors text-left whitespace-nowrap',
+                    'flex h-10 items-center gap-2.5 rounded-[10px] px-3 text-sm font-semibold transition-colors text-left whitespace-nowrap',
                     isActive
-                      ? 'bg-sidebar text-sidebar-foreground shadow-xs'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                   )}
                 >
                   <Icon className="size-4 shrink-0" />
@@ -129,7 +129,7 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-foreground uppercase tracking-wider">
+                  <label className="ui-label">
                     Nombre de la Empresa
                   </label>
                   <Input 
@@ -140,26 +140,26 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-foreground uppercase tracking-wider">
+                  <label className="ui-label">
                     Email de Contacto Corporativo
                   </label>
                   <Input 
                     type="email" 
                     defaultValue={user?.email || ''}
                     disabled
-                    className="h-10 bg-muted/50 cursor-not-allowed text-muted-foreground font-mono text-xs"
+                    className="cursor-not-allowed text-muted-foreground font-mono text-xs"
                   />
                   <p className="text-xs text-muted-foreground">Para actualizar el email principal comunicate con soporte técnico.</p>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-foreground uppercase tracking-wider">
+                  <label className="ui-label">
                     Zona Horaria Comercial
                   </label>
                   <select 
                     aria-label="Zona Horaria Comercial"
                     value={timezone}
                     onChange={(e) => setTimezone(e.target.value)}
-                    className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm text-foreground shadow-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
+                    className="ui-field"
                   >
                     <option value="Buenos Aires (GMT-3)">Buenos Aires (GMT-3)</option>
                     <option value="Santiago de Chile (GMT-4)">Santiago de Chile (GMT-4)</option>
@@ -173,7 +173,6 @@ export default function SettingsPage() {
                   variant="primary"
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="shadow-action"
                 >
                   <Save className="size-4" />
                   <span>{isSaving ? 'Guardando...' : 'Guardar Cambios'}</span>
@@ -192,7 +191,7 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-foreground uppercase tracking-wider">
+                  <label className="ui-label">
                     Nombre Público del Asistente
                   </label>
                   <Input 
@@ -205,9 +204,9 @@ export default function SettingsPage() {
                   <p className="text-xs text-muted-foreground">Así se presentará la IA al entablar contacto por WhatsApp.</p>
                 </div>
 
-                <div className="rounded-lg border border-accent/20 bg-accent/5 p-4">
+                <div className="rounded-2xl bg-primary/5 p-4 ring-1 ring-primary/15">
                   <div className="flex gap-3">
-                    <div className="grid size-9 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground">
+                    <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                       <ShieldCheck className="size-5" strokeWidth={1.8} />
                     </div>
                     <div>
@@ -224,7 +223,6 @@ export default function SettingsPage() {
                   variant="primary"
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="shadow-action"
                 >
                   <Save className="size-4" />
                   <span>{isSaving ? 'Guardando...' : 'Guardar Cambios'}</span>
@@ -242,8 +240,8 @@ export default function SettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className={cn("p-4 rounded-lg border flex items-start gap-3.5", isOperative ? "border-success/25 bg-success/10" : "border-border bg-muted/50")}>
-                  <div className={cn("size-9 rounded-full flex items-center justify-center shrink-0 mt-0.5", isOperative ? "bg-success/20 text-success" : "bg-muted text-muted-foreground")}>
+                <div className={cn("p-4 rounded-2xl flex items-start gap-3.5", isOperative ? "bg-success/10" : "bg-secondary")}>
+                  <div className={cn("size-9 rounded-full flex items-center justify-center shrink-0 mt-0.5", isOperative ? "bg-success/20 text-success" : "bg-secondary text-muted-foreground")}>
                     <PhoneCall className="size-4" />
                   </div>
                   <div>
@@ -309,7 +307,7 @@ export default function SettingsPage() {
                         <div className="text-xs text-muted-foreground font-mono">{user?.email || ''}</div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="ceibo">
+                        <Badge variant="info">
                           Administrador
                         </Badge>
                       </TableCell>

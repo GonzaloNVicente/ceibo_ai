@@ -182,7 +182,7 @@ export default function ChatsPage() {
   return (
     <div className="space-y-4">
       {(errorLeads || errorMessages) && (
-        <div className="rounded-md bg-destructive/15 p-4 text-destructive border border-destructive/30 shadow-sm">
+        <div className="rounded-2xl bg-negative/10 p-4 text-negative">
           <div className="flex items-center gap-2">
             <ShieldCheck className="size-5" />
             <h3 className="font-semibold text-lg">Error de Conexión a Base de Datos</h3>
@@ -195,12 +195,12 @@ export default function ChatsPage() {
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="mb-2 flex items-center gap-2">
-            <span className="inline-flex h-7 items-center gap-2 rounded-full border border-success/25 bg-success/10 px-2.5 text-xs font-bold text-success">
+            <span className="inline-flex h-7 items-center gap-2 rounded-full bg-success/10 px-2.5 text-xs font-semibold text-success">
               <span className="live-pulse size-2 rounded-full bg-success" /> En Vivo
             </span>
             <span className="text-xs text-muted-foreground">{leads.length} conversaciones registradas</span>
           </div>
-          <h1 className="font-display text-3xl font-bold leading-tight sm:text-4xl text-foreground">
+          <h1 className="ui-page-title">
             Conversaciones WhatsApp
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -210,9 +210,9 @@ export default function ChatsPage() {
       </div>
       
       {/* Chat 2-column container */}
-      <div className="h-[calc(100vh-14rem)] min-h-[580px] overflow-hidden rounded-lg border border-border bg-card shadow-panel flex flex-col md:flex-row">
+      <div className="h-[calc(100vh-14rem)] min-h-[580px] overflow-hidden rounded-card bg-card shadow-panel flex flex-col md:flex-row">
         {/* Left Pane: Sessions List */}
-        <div className="w-full md:w-[320px] lg:w-[360px] shrink-0 flex flex-col border-r border-border bg-muted/20">
+        <div className="w-full md:w-[320px] lg:w-[360px] shrink-0 flex flex-col border-r border-border bg-secondary/30">
           {/* Search Header */}
           <div className="p-3.5 border-b border-border bg-card/70 backdrop-blur-xs">
             <div className="relative">
@@ -247,11 +247,11 @@ export default function ChatsPage() {
                     className={cn(
                       "w-full text-left p-3.5 transition-colors flex items-center gap-3 border-l-4",
                       isSelected
-                        ? "bg-muted/80 border-l-primary text-foreground"
-                        : "border-l-transparent hover:bg-muted/40 text-muted-foreground hover:text-foreground"
+                        ? "bg-primary/10 border-l-primary text-foreground"
+                        : "border-l-transparent hover:bg-secondary/60 text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    <div className="size-10 shrink-0 rounded-md bg-accent font-display text-xs font-bold text-accent-foreground flex items-center justify-center uppercase shadow-xs">
+                    <div className="size-10 shrink-0 rounded-full bg-accent text-xs font-semibold text-accent-foreground flex items-center justify-center uppercase">
                       {(lead.customer_name?.[0] || 'U')}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -291,7 +291,7 @@ export default function ChatsPage() {
               {/* Active Chat Header */}
               <div className="h-16 px-6 flex items-center justify-between border-b border-border bg-card/90 backdrop-blur-xs shrink-0 z-10">
                 <div className="flex items-center gap-3">
-                  <div className="size-10 shrink-0 rounded-md bg-accent font-display text-xs font-bold text-accent-foreground flex items-center justify-center uppercase shadow-xs">
+                  <div className="size-10 shrink-0 rounded-full bg-accent text-xs font-semibold text-accent-foreground flex items-center justify-center uppercase">
                     {(selectedLead.customer_name?.[0] || 'U')}
                   </div>
                   <div>
@@ -358,14 +358,14 @@ export default function ChatsPage() {
                         <div key={msg.id} className={cn("flex flex-col", isUser ? "items-start" : "items-end")}>
                           {isUser && (
                             /* Customer message: Forest green sidebar bubble */
-                            <div className="max-w-[80%] sm:max-w-[70%] rounded-2xl rounded-tl-xs bg-sidebar text-white p-3.5 shadow-panel">
-                              <div className="text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/70 mb-1">
+                            <div className="max-w-[80%] sm:max-w-[70%] rounded-2xl rounded-tl-md bg-secondary text-foreground p-3.5">
+                              <div className="text-[11px] font-semibold text-muted-foreground mb-1">
                                 Cliente ({selectedLead.customer_name || `+${selectedLead.customer_phone}`})
                               </div>
-                              <p className="text-sm whitespace-pre-wrap leading-relaxed text-white">
+                              <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">
                                 {msg.message_text}
                               </p>
-                              <span className="text-[10px] text-sidebar-foreground/60 mt-1.5 block text-right font-mono">
+                              <span className="text-[10px] text-muted-foreground mt-1.5 block text-right">
                                 {new Date(msg.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
@@ -373,15 +373,15 @@ export default function ChatsPage() {
 
                           {isBot && (
                             /* AI Bot message: White card with border and success indicator */
-                            <div className="max-w-[80%] sm:max-w-[70%] rounded-2xl rounded-tr-xs bg-card border border-border text-card-foreground p-3.5 shadow-panel">
-                              <div className="text-[10px] font-bold text-success uppercase flex items-center gap-1.5 mb-1">
-                                <Bot className="size-3.5 text-success" />
+                            <div className="max-w-[80%] sm:max-w-[70%] rounded-2xl rounded-tr-md bg-card text-card-foreground p-3.5 shadow-panel ring-1 ring-border">
+                              <div className="text-[11px] font-semibold text-info-strong flex items-center gap-1.5 mb-1">
+                                <Bot className="size-3.5 text-info-strong" />
                                 Bot WhatsApp · IA
                               </div>
                               <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">
                                 {msg.message_text}
                               </p>
-                              <span className="text-[10px] text-muted-foreground mt-1.5 block text-right font-mono">
+                              <span className="text-[10px] text-muted-foreground mt-1.5 block text-right">
                                 {new Date(msg.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
@@ -389,15 +389,15 @@ export default function ChatsPage() {
 
                           {isAgent && (
                             /* Human Agent message: Ceibo-soft tint with terracotta border */
-                            <div className="max-w-[80%] sm:max-w-[70%] rounded-2xl rounded-tr-xs bg-ceibo-soft text-foreground border border-ceibo/25 p-3.5 shadow-action">
-                              <div className="text-[10px] font-bold text-ceibo uppercase flex items-center gap-1.5 mb-1">
-                                <UserCheck className="size-3.5 text-ceibo" />
+                            <div className="max-w-[80%] sm:max-w-[70%] rounded-2xl rounded-tr-md bg-primary text-primary-foreground p-3.5">
+                              <div className="text-[11px] font-semibold text-primary-foreground/85 flex items-center gap-1.5 mb-1">
+                                <UserCheck className="size-3.5 text-primary-foreground/85" />
                                 Asesor Comercial (Tú)
                               </div>
-                              <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground">
+                              <p className="text-sm whitespace-pre-wrap leading-relaxed text-primary-foreground">
                                 {msg.message_text}
                               </p>
-                              <span className="text-[10px] text-ceibo/80 mt-1.5 block text-right font-mono">
+                              <span className="text-[10px] text-primary-foreground/70 mt-1.5 block text-right">
                                 {new Date(msg.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
@@ -419,13 +419,13 @@ export default function ChatsPage() {
                       value={newMessage}
                       onChange={e => setNewMessage(e.target.value)}
                       placeholder="Escribir un mensaje como asesor comercial..."
-                      className="flex-1 h-11"
+                      className="flex-1 h-11 rounded-full px-5"
                     />
                     <Button 
                       type="submit"
                       variant="primary"
                       disabled={!newMessage.trim()}
-                      className="h-11 px-5 shadow-action shrink-0"
+                      className="h-11 px-5 shrink-0"
                     >
                       <Send className="size-4" />
                       <span>Enviar</span>

@@ -73,6 +73,7 @@ const config: Config = {
         },
         // Lo malo / lo que requiere accion (rojo). Lo bueno es `success` (verde).
         negative: withOpacity('--negative'),
+        warning: withOpacity('--warning'),
         info: {
           DEFAULT: withOpacity('--info'),
           strong: withOpacity('--info-strong'),
@@ -104,17 +105,19 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['var(--font-sans)', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['var(--font-display)', 'Sora', 'Space Grotesk', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Text', 'var(--font-sans)', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Text', 'var(--font-sans)', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+        card: '22px',
       },
       boxShadow: {
         action: 'var(--shadow-action)',
         panel: 'var(--shadow-panel)',
+        hi: 'var(--shadow-hi)',
       },
       animation: {
         'live-pulse': 'live-pulse 1.8s ease-in-out infinite',

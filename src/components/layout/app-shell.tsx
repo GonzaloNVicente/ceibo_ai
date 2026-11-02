@@ -72,11 +72,11 @@ export function AppShell({ children }: AppShellProps) {
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-xs lg:hidden"
+          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
         >
           <div
-            className="fixed inset-y-0 left-0 z-50 w-[252px] bg-sidebar text-sidebar-foreground shadow-panel"
+            className="fixed inset-y-0 left-0 z-50 w-[252px] border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-hi"
             onClick={(e) => e.stopPropagation()}
           >
             <Sidebar onNavigate={() => setMobileMenuOpen(false)} isMobile />

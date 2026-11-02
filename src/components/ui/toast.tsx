@@ -15,10 +15,10 @@ export function ToastContainer() {
         <div
           key={toast.id}
           className={cn(
-            "flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg transition-all animate-in slide-in-from-bottom-5",
+            "flex items-center gap-3 rounded-2xl px-4 py-3 shadow-hi transition-all animate-in slide-in-from-bottom-5 backdrop-blur-md",
             toast.type === 'error' 
-              ? "bg-destructive/15 border-destructive/30 text-destructive"
-              : "bg-success/15 border-success/30 text-success"
+              ? "bg-card text-negative ring-1 ring-negative/30"
+              : "bg-card text-success ring-1 ring-success/30"
           )}
           onClick={() => removeToast(toast.id)}
           style={{ cursor: 'pointer' }}

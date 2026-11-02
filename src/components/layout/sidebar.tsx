@@ -18,9 +18,15 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/auth-context';
 import { useBotActivity } from '@/hooks/use-bot-activity';
 
-export function BrandMark() {
+/** Logo de la marca: la terracota se usa SOLO aca (el resto de la app usa la paleta azul/verde/rojo). */
+export function BrandMark({ className }: { className?: string }) {
   return (
-    <div className="grid size-11 shrink-0 place-items-center rounded-md bg-primary font-display text-lg font-bold text-primary-foreground shadow-action">
+    <div
+      className={cn(
+        'grid size-10 shrink-0 place-items-center rounded-xl bg-ceibo text-lg font-bold text-white shadow-sm',
+        className
+      )}
+    >
       C
     </div>
   );
@@ -90,7 +96,7 @@ export function Sidebar({ className, onNavigate, isMobile, collapsed, onToggleCo
       aria-label={isCollapsed ? 'Mostrar barra lateral' : 'Ocultar barra lateral'}
       aria-expanded={!isCollapsed}
       title={isCollapsed ? 'Mostrar barra lateral (Ctrl+B)' : 'Ocultar barra lateral (Ctrl+B)'}
-      className="grid size-9 shrink-0 place-items-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/55 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="grid size-9 shrink-0 place-items-center rounded-[10px] text-sidebar-foreground transition-colors hover:bg-black/[0.05] hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-white/[0.07]"
     >
       {isCollapsed ? (
         <PanelLeftOpen className="size-[18px]" strokeWidth={1.8} />
@@ -106,7 +112,7 @@ export function Sidebar({ className, onNavigate, isMobile, collapsed, onToggleCo
         isMobile
           ? 'flex h-full w-[252px] flex-col bg-sidebar text-sidebar-foreground'
           : cn(
-              'fixed inset-y-0 left-0 z-30 hidden flex-col overflow-hidden bg-sidebar text-sidebar-foreground transition-[width] duration-200 motion-reduce:transition-none lg:flex',
+              'fixed inset-y-0 left-0 z-30 hidden flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 motion-reduce:transition-none lg:flex',
               isCollapsed ? 'w-[72px]' : 'w-[252px]'
             ),
         className
@@ -119,17 +125,17 @@ export function Sidebar({ className, onNavigate, isMobile, collapsed, onToggleCo
           {toggleButton}
         </div>
       ) : (
-        <div className="flex items-center gap-3 px-6 py-7">
+        <div className="flex items-center gap-3 px-5 py-6">
           <BrandMark />
           <div className="min-w-0">
-            <p className="font-display text-[17px] font-bold leading-none text-sidebar-accent-foreground">
+            <p className="text-[17px] font-semibold leading-none tracking-tight text-sidebar-accent-foreground">
               Ceibo AI
             </p>
-            <p className="mt-1 truncate text-[11px] font-medium text-sidebar-foreground/55">
+            <p className="mt-1 truncate text-[11px] font-medium text-sidebar-foreground">
               Ventas por WhatsApp
             </p>
           </div>
-          {toggleButton && <div className="ml-auto -mr-3">{toggleButton}</div>}
+          {toggleButton && <div className="ml-auto -mr-2">{toggleButton}</div>}
         </div>
       )}
 
@@ -152,21 +158,21 @@ export function Sidebar({ className, onNavigate, isMobile, collapsed, onToggleCo
               title={isCollapsed ? item.label : undefined}
               onClick={onNavigate}
               className={cn(
-                'relative flex h-11 items-center rounded-md text-sm font-semibold transition-colors',
+                'relative flex h-10 items-center rounded-[10px] text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 isCollapsed ? 'justify-center' : 'gap-3 px-3',
                 isActive
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/55 hover:text-sidebar-accent-foreground'
+                  ? 'bg-sidebar-accent font-semibold text-sidebar-accent-foreground shadow-sm dark:shadow-none'
+                  : 'font-medium text-sidebar-foreground hover:bg-black/[0.05] hover:text-sidebar-accent-foreground dark:hover:bg-white/[0.06]'
               )}
             >
-              <Icon className="size-[18px] shrink-0" strokeWidth={1.8} />
+              <Icon className={cn('size-[18px] shrink-0', isActive && 'text-primary')} strokeWidth={1.8} />
               {isCollapsed ? (
                 <>
                   <span className="sr-only">{item.label}</span>
                   {badge > 0 && (
                     <span
                       aria-hidden="true"
-                      className="absolute right-1.5 top-1.5 min-w-4 rounded-full bg-negative px-1 text-center text-[9px] font-bold leading-4 text-white shadow-sm"
+                      className="absolute right-1.5 top-1.5 min-w-4 rounded-full bg-[#D70015] px-1 text-center text-[9px] font-bold leading-4 text-white"
                     >
                       {badge > 99 ? '99+' : badge}
                     </span>
@@ -176,11 +182,11 @@ export function Sidebar({ className, onNavigate, isMobile, collapsed, onToggleCo
                 <>
                   <span className="truncate">{item.label}</span>
                   {item.label === 'Inbox' && pendingCount > 0 ? (
-                    <span className="ml-auto rounded-full bg-negative px-2 py-0.5 text-[11px] font-bold text-white shadow-sm">
+                    <span className="ml-auto rounded-full bg-[#D70015] px-2 py-0.5 text-[11px] font-bold text-white">
                       {pendingCount}
                     </span>
                   ) : item.count ? (
-                    <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[11px] text-primary-foreground">
+                    <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-foreground">
                       {item.count}
                     </span>
                   ) : null}
@@ -193,35 +199,30 @@ export function Sidebar({ className, onNavigate, isMobile, collapsed, onToggleCo
 
       {/* Footer / Bot WhatsApp Operational Status */}
       <div className={cn('mt-auto', isCollapsed ? 'p-3' : 'p-4')}>
-        <div className="border-t border-sidebar-border pt-4">
-          {isCollapsed ? (
-            <div
-              className={cn(
-                'relative mx-auto grid size-11 place-items-center rounded-md',
-                isOperative ? 'bg-sidebar-accent/65' : 'bg-muted/10'
-              )}
-              title={`Bot WhatsApp: ${botStatusText}`}
-              role="img"
-              aria-label={`Bot WhatsApp: ${botStatusText}`}
-            >
-              <Bot className={cn('size-5', isOperative ? 'text-sidebar-accent-foreground' : 'text-muted-foreground')} strokeWidth={1.8} />
-              {isOperative && <span className="live-pulse absolute right-1.5 top-1.5 size-2.5 rounded-full border-2 border-sidebar-accent bg-success" />}
+        {isCollapsed ? (
+          <div
+            className="relative mx-auto grid size-11 place-items-center rounded-2xl bg-card shadow-panel"
+            title={`Bot WhatsApp: ${botStatusText}`}
+            role="img"
+            aria-label={`Bot WhatsApp: ${botStatusText}`}
+          >
+            <Bot className={cn('size-5', isOperative ? 'text-foreground' : 'text-muted-foreground')} strokeWidth={1.8} />
+            {isOperative && <span className="live-pulse absolute right-1.5 top-1.5 size-2.5 rounded-full border-2 border-card bg-success-light" />}
+          </div>
+        ) : (
+          <div className="flex items-start gap-3 rounded-2xl bg-card p-3.5 shadow-panel">
+            <div className="relative mt-0.5">
+              <Bot className={cn('size-5', isOperative ? 'text-foreground' : 'text-muted-foreground')} strokeWidth={1.8} />
+              {isOperative && <span className="live-pulse absolute -right-1 -top-1 size-2.5 rounded-full border-2 border-card bg-success-light" />}
             </div>
-          ) : (
-            <div className={cn("flex items-start gap-3 rounded-md p-3.5", isOperative ? "bg-sidebar-accent/65" : "bg-muted/10")}>
-              <div className="relative mt-0.5">
-                <Bot className={cn("size-5", isOperative ? "text-sidebar-accent-foreground" : "text-muted-foreground")} strokeWidth={1.8} />
-                {isOperative && <span className="live-pulse absolute -right-1 -top-1 size-2.5 rounded-full border-2 border-sidebar-accent bg-success" />}
-              </div>
-              <div>
-                <p className={cn("text-xs font-bold", isOperative ? "text-sidebar-accent-foreground" : "text-muted-foreground")}>Bot WhatsApp</p>
-                <p className={cn("mt-1 text-[11px] font-semibold", isOperative ? "text-success" : "text-muted-foreground")}>
-                  {botStatusText}
-                </p>
-              </div>
+            <div>
+              <p className="text-xs font-semibold text-foreground">Bot WhatsApp</p>
+              <p className={cn('mt-0.5 text-[11px] font-semibold', isOperative ? 'text-success' : 'text-muted-foreground')}>
+                {botStatusText}
+              </p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </aside>
   );

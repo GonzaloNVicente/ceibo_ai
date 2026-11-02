@@ -145,7 +145,7 @@ Valores canónicos (los guarda `normalize_query_type()`, que también acepta el 
 
 ## Dashboard "Tiempo y Dinero"
 
-Diseño de los profesores mentores (referencia: `Dashboard.dc.html`, un único componente con `tab` = tiempo|dinero y `status` = ok|loading|empty|error). **Se copió fiel, solo dentro del dashboard:** tipografía **Inter** y paleta azul/verde/rojo estilo Apple, aisladas bajo `.cb-dash` (`src/app/dashboard/dashboard.css`; la fuente se carga en `src/app/dashboard/layout.tsx`). El resto de la app sigue con Sora/Manrope y su paleta.
+Diseño de los profesores mentores (referencia: `Dashboard.dc.html`, un único componente con `tab` = tiempo|dinero y `status` = ok|loading|empty|error). **Se copió fiel, solo dentro del dashboard:** tipografía **Inter** y paleta azul/verde/rojo estilo Apple, aisladas bajo `.cb-dash` (`src/app/dashboard/dashboard.css`; la fuente ahora se carga en el layout raíz). Desde la estandarización visual el resto de la app usa el mismo sistema (ver "Sistema de diseño").
 
 Estructura de `src/app/dashboard/page.tsx` (de arriba abajo):
 1. Línea de contexto ("Ceibo AI Tech Solutions · ● Asistente activo · actualizado hace X") + selector de período (Hoy, 7 días, 30 días, Este mes, Personalizado; 90 días y Mes pasado funcionan por URL).
@@ -154,7 +154,7 @@ Estructura de `src/app/dashboard/page.tsx` (de arriba abajo):
 4. **Detalle de la pestaña activa**: Tiempo = gráfico de horas devueltas por período + "Sin Ceibo y con Ceibo" + velocidad de respuesta / % sin intervención / llegaron al equipo. Dinero = gráfico del valor por período + reparto con vendedor / sin asignar (con link "Asignar vendedor" a `/inbox`) + pedido promedio / pedidos nuevos vs. anterior / esperando a un vendedor.
 5. Pie "Cómo calculamos estos números" + **Descargar informe** (= `window.print()` con CSS de impresión: oculta el menú y la barra superior, muestra **las dos vistas** y se guarda como PDF).
 
-Estados: cargando (esqueletos; el refresco de fondo no parpadea), sin datos (sugiere un período MÁS largo, nunca el ya elegido), error de conexión (banner con "Reintentar"; **el banner de error debe seguir visible**, ver bug 5). **Modo oscuro: los colores están preparados** (`.cb-dash[data-theme='dark']`) pero **no se activa** hasta que toda la app lo soporte.
+Estados: cargando (esqueletos; el refresco de fondo no parpadea), sin datos (sugiere un período MÁS largo, nunca el ya elegido), error de conexión (banner con "Reintentar"; **el banner de error debe seguir visible**, ver bug 5). **Modo oscuro activo** (clase `dark` en `<html>`, ver "Sistema de diseño").
 
 Componentes en `src/components/dashboard/`: `tiles-row`, `focus-tabs`, `panels` (`TimePanel`, `MoneyPanel`, gráfico y tarjetas), `states`, `period-filter`, `icons`. La lógica pura (números, dinero, gráficos, fichas) está en `src/lib/dashboard-overview.ts`, con tests (`node tests/e2e/test-dashboard-overview.mjs`).
 
@@ -170,15 +170,26 @@ Componentes en `src/components/dashboard/`: `tiles-row`, `focus-tabs`, `panels` 
 - **Modo demo** (cliente mock, sin RPC): la misma estructura se arma en el navegador desde las filas diarias (`buildOverviewFromDailyRows`); las categorías se reparten para que también sumen el total.
 - Código anterior que ya no usa el dashboard pero sigue en el repo: `get_dashboard_metrics()` (migración D), `getDashboardMetrics`, `getRecent30Days`, `getEscalatedOrders`, `getProductCatalog` y los helpers `maskPhone` / `summarizeProduct`.
 
+## Sistema de diseño (toda la app) y modo oscuro
+
+Un solo estándar visual en todas las pantallas (dashboard, Inbox, Chats, Base de Conocimiento, Configuración, Login y landing), tomado del dashboard de los profesores. **No hardcodear colores: usar los tokens.**
+
+- **Tipografía:** Inter (`--font-sans`, cargada en `src/app/layout.tsx`). Ya no se usan Sora ni Manrope; `.font-display` es un alias de Inter.
+- **Tokens** en `src/app/globals.css` (claro en `:root`, oscuro en `.dark`); Tailwind los lee con `color-mix` (`tailwind.config.ts`). Fondo `#F5F5F7`, tarjetas blancas `rounded-card` (22px) con sombra suave (`shadow-panel`/`shadow-hi`), sin bordes.
+- **Componentes base** (`src/components/ui/`): botones tipo pastilla (variantes default/primary azul, secondary, outline, ghost, destructive), `Badge` pastilla teñida, campos grises (`.ui-field`), control segmentado (`.ui-seg` / `.ui-seg-item` con `aria-pressed`), `.ui-page-title`, `.ui-label`. Menú lateral **claro estilo Apple** (item activo en blanco).
+- **Modo oscuro:** interruptor claro/oscuro/automático en la barra superior (`ThemeToggle`). `ThemeProvider` (`src/contexts/theme-context.tsx`) guarda la elección en `localStorage` (`ceibo.theme`, por defecto claro) y pone la clase `dark` en `<html>`; un script inline en el `<head>` (`THEME_INIT_SCRIPT`, `src/lib/theme.ts`) la aplica antes de hidratar para evitar el parpadeo. El dashboard sigue la misma clase (`.dark .cb-dash`).
+- **Contraste:** se verificó con un escaneo automático (WCAG AA) en claro y oscuro. Los textos chicos sobre pastillas teñidas usan `info-strong`, `success`, `warning`, `negative`; no bajar esos tokens de oscuridad.
+
 ## Semántica de color
 
-**Fuera del dashboard** (Inbox, Chats, barra lateral, etc.): **bueno = verde, malo = rojo.** Un mismo color significa lo mismo.
+**Bueno = verde, malo = rojo.** Un mismo color significa lo mismo en toda la app (el dashboard tiene su propia paleta equivalente).
 
-- **Verde (`success`)**: resultados buenos y dinero ("Atendido", "Con un vendedor"). **Rojo (`negative`)**: lo malo o lo que pide acción ("Pendiente", "Atención requerida", contador de pendientes de la barra lateral, errores de conexión). `Badge variant="destructive"` usa este rojo; `destructive` sigue para banners y toasts de error.
-- **Terracota (`ceibo` / `primary`)**: **marca e identidad** — logo, botón principal, login, landing, etiqueta del plan y burbujas del asesor en Chats. No usarla para indicar estado.
-- **Azul (`info`, texto chico `info-strong`)** y **ámbar** (`Badge variant="warning"`): informativo / estados intermedios.
-- Tokens en `src/app/globals.css` (`--success`, `--success-light`, `--negative`, `--info`) y `tailwind.config.ts`. Usar `text-negative` (no `text-destructive`) para texto chico en rojo.
+- **Verde (`success`)**: resultados buenos y dinero ("Atendido", "Con un vendedor"). **Rojo (`negative`)**: lo malo o lo que pide acción ("Pendiente", "Atención requerida", contador de pendientes, errores). `Badge variant="destructive"` usa este rojo.
+- **Azul (`primary` / `info`, texto chico `info-strong`)**: acciones e información (botón principal, ítem activo, burbujas del asesor, plan). **Naranja** (`warning`): estados intermedios y MODO DEMO.
+- **Terracota (`ceibo`): SOLO el logo** (`BrandMark`). Las variantes `ceibo`/`ceibo-soft` de `Badge` son alias de `info`.
+- Usar `text-negative` (no `text-destructive`) para texto chico en rojo.
 - **El dashboard tiene su propia paleta** (variables `--blue`, `--green`, `--red` bajo `.cb-dash`): ahí azul = Tiempo, verde = Dinero y lo bueno, rojo = lo malo.
+
 
 ## Barra lateral plegable
 

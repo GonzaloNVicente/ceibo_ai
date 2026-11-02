@@ -157,7 +157,7 @@ export default function InboxPage() {
   return (
     <div className="space-y-6">
       {errorState && (
-        <div className="rounded-md bg-destructive/15 p-4 text-destructive border border-destructive/30 shadow-sm">
+        <div className="rounded-2xl bg-negative/10 p-4 text-negative">
           <div className="flex items-center gap-2">
             <ShieldCheck className="size-5" />
             <h3 className="font-semibold text-lg">Error de Conexión a Base de Datos</h3>
@@ -166,16 +166,16 @@ export default function InboxPage() {
         </div>
       )}
 
-      {/* Header section with live-pulse status and Sora display font */}
+      {/* Encabezado de la pantalla */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="mb-2.5 flex items-center gap-2">
-            <span className="inline-flex h-7 items-center gap-2 rounded-full border border-success/25 bg-success/10 px-2.5 text-xs font-bold text-success">
+            <span className="inline-flex h-7 items-center gap-2 rounded-full bg-success/10 px-2.5 text-xs font-semibold text-success">
               <span className="live-pulse size-2 rounded-full bg-success" /> En Vivo
             </span>
             <span className="text-xs text-muted-foreground">{totalCount} leads registrados</span>
           </div>
-          <h1 className="font-display text-3xl font-bold leading-tight sm:text-4xl text-foreground">
+          <h1 className="ui-page-title">
             Inbox de Leads WhatsApp
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -199,7 +199,7 @@ export default function InboxPage() {
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
               aria-label="Filtrar por tipo de consulta"
-              className="h-10 rounded-md border border-border bg-card px-3 text-sm text-foreground shadow-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
+              className="ui-field w-auto pr-8"
             >
               <option value="all">Todos los tipos</option>
               <option value="pedido">Pedido / Presupuesto</option>
@@ -225,55 +225,25 @@ export default function InboxPage() {
             </div>
           </div>
           
-          {/* Status Tabs */}
-          <div className="flex flex-wrap gap-2 pt-4 border-b border-border pb-3">
-            <button 
-              onClick={() => setStatusFilter('all')}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
-                statusFilter === 'all'
-                  ? "bg-sidebar text-sidebar-foreground shadow-xs"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              Todos <span className="ml-1 rounded bg-background/20 px-1.5 py-0.5 text-[10px]">{totalCount}</span>
-            </button>
-            <button 
-              onClick={() => setStatusFilter('derivado')}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
-                statusFilter === 'derivado'
-                  ? "bg-negative/10 text-negative border border-negative/30 font-bold"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <Clock className="size-3" />
-              Pendientes <span className="ml-1 rounded bg-negative/15 px-1.5 py-0.5 text-[10px] text-negative font-bold">{pendientesCount}</span>
-            </button>
-            <button 
-              onClick={() => setStatusFilter('resuelto')}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
-                statusFilter === 'resuelto'
-                  ? "bg-success/15 text-success border border-success/30 font-bold"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <CheckCircle2 className="size-3" />
-              Atendidos <span className="ml-1 rounded bg-success/20 px-1.5 py-0.5 text-[10px] text-success font-bold">{atendidosCount}</span>
-            </button>
-            <button 
-              onClick={() => setStatusFilter('uncategorized')}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
-                statusFilter === 'uncategorized'
-                  ? "bg-muted text-foreground border border-border font-bold"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <HelpCircle className="size-3" />
-              Sin clasificar <span className="ml-1 rounded bg-muted-foreground/20 px-1.5 py-0.5 text-[10px]">{uncategorizedCount}</span>
-            </button>
+          {/* Filtros por estado (control segmentado) */}
+          <div className="pt-4">
+            <div role="group" aria-label="Filtrar por estado" className="ui-seg">
+              <button type="button" aria-pressed={statusFilter === 'all'} onClick={() => setStatusFilter('all')} className="ui-seg-item">
+                Todos <span className="rounded-full bg-card px-1.5 text-[10px] font-semibold text-muted-foreground">{totalCount}</span>
+              </button>
+              <button type="button" aria-pressed={statusFilter === 'derivado'} onClick={() => setStatusFilter('derivado')} className="ui-seg-item">
+                <Clock className="size-3" />
+                Pendientes <span className="rounded-full bg-card px-1.5 text-[10px] font-bold text-negative">{pendientesCount}</span>
+              </button>
+              <button type="button" aria-pressed={statusFilter === 'resuelto'} onClick={() => setStatusFilter('resuelto')} className="ui-seg-item">
+                <CheckCircle2 className="size-3" />
+                Atendidos <span className="rounded-full bg-card px-1.5 text-[10px] font-bold text-success">{atendidosCount}</span>
+              </button>
+              <button type="button" aria-pressed={statusFilter === 'uncategorized'} onClick={() => setStatusFilter('uncategorized')} className="ui-seg-item">
+                <HelpCircle className="size-3" />
+                Sin clasificar <span className="rounded-full bg-card px-1.5 text-[10px] font-semibold text-muted-foreground">{uncategorizedCount}</span>
+              </button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

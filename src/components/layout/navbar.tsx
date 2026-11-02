@@ -2,9 +2,10 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { MessageCircleMore, ChevronDown } from 'lucide-react';
+import { MessageCircleMore, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { BrandMark } from './sidebar';
+import { ThemeToggle } from './theme-toggle';
 import { useBotActivity } from '@/hooks/use-bot-activity';
 import { cn } from '@/lib/utils';
 import { isLiveConfigured } from '@/lib/supabase/client';
@@ -42,18 +43,18 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-md">
+    <header className="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur-xl">
       <div className="flex min-h-16 items-center gap-3 px-4 sm:px-6 xl:px-8">
         {/* Mobile Brand Fallback & Menu Toggle */}
         <div className="flex items-center gap-2 lg:hidden">
           <button
             type="button"
             onClick={onMenuToggle}
-            className="flex items-center gap-2 rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+            className="flex items-center gap-2 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Abrir menú de navegación"
           >
             <BrandMark />
-            <span className="hidden font-display text-sm font-bold sm:block">
+            <span className="hidden text-sm font-semibold sm:block">
               Ceibo AI
             </span>
           </button>
@@ -62,13 +63,13 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
         {/* Tenant Identity & WhatsApp Status */}
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <p className="truncate text-sm font-bold">{tenantName}</p>
-            <span className="hidden rounded bg-ceibo-soft px-2 py-1 text-[10px] font-bold text-ceibo sm:inline">
+            <p className="truncate text-sm font-semibold">{tenantName}</p>
+            <span className="hidden rounded-full bg-info/10 px-2 py-0.5 text-[10px] font-bold text-info-strong sm:inline">
               {tenantPlan}
             </span>
             {!isLiveConfigured() && (
               <span
-                className="rounded border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-800"
+                className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-bold text-warning"
                 title="Sin credenciales de Supabase: los datos son de demostración, no reales"
               >
                 MODO DEMO
@@ -83,27 +84,30 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
           </div>
         </div>
 
-        {/* User Profile & Action Menu */}
-        <div className="ml-auto flex items-center gap-3 border-l border-border pl-3">
-          <div className="hidden text-right md:block">
-            <p className="text-xs font-bold">{userName}</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">{userEmail}</p>
+        {/* Tema + perfil del usuario */}
+        <div className="ml-auto flex items-center gap-3">
+          <ThemeToggle />
+          <div className="flex items-center gap-3 border-l border-border pl-3">
+            <div className="hidden text-right md:block">
+              <p className="text-xs font-semibold">{userName}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">{userEmail}</p>
+            </div>
+            <div
+              className="grid size-9 select-none place-items-center rounded-full bg-secondary text-xs font-semibold text-foreground"
+              title={`${userName} (${userEmail})`}
+            >
+              {userInitials}
+            </div>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="grid size-8 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              title="Cerrar sesión"
+              aria-label="Cerrar sesión"
+            >
+              <LogOut className="size-4" />
+            </button>
           </div>
-          <div
-            className="grid size-9 place-items-center rounded-md bg-accent font-display text-xs font-bold text-accent-foreground select-none"
-            title={`${userName} (${userEmail})`}
-          >
-            {userInitials}
-          </div>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-            title="Cerrar sesión"
-            aria-label="Cerrar sesión"
-          >
-            <ChevronDown className="size-4" />
-          </button>
         </div>
       </div>
     </header>

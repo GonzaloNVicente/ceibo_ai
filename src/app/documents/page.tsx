@@ -111,12 +111,12 @@ export default function DocumentsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="mb-2 flex items-center gap-2">
-            <span className="inline-flex h-7 items-center gap-2 rounded-full border border-success/25 bg-success/10 px-2.5 text-xs font-bold text-success">
+            <span className="inline-flex h-7 items-center gap-2 rounded-full bg-success/10 px-2.5 text-xs font-semibold text-success">
               <BookOpen className="size-3.5" /> Cerebro IA Conectado
             </span>
             <span className="text-xs text-muted-foreground">{documents.length} documentos indexados</span>
           </div>
-          <h1 className="font-display text-3xl font-bold leading-tight sm:text-4xl text-foreground">
+          <h1 className="ui-page-title">
             Base de Conocimiento
           </h1>
           <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
@@ -135,8 +135,8 @@ export default function DocumentsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="border-2 border-dashed rounded-lg p-7 text-center border-border bg-background/50 opacity-60">
-              <div className="mx-auto size-12 rounded-md bg-accent text-accent-foreground flex items-center justify-center mb-3 shadow-xs">
+            <div className="border-2 border-dashed rounded-2xl p-7 text-center border-border bg-secondary/40 opacity-70">
+              <div className="mx-auto size-12 rounded-2xl bg-accent text-accent-foreground flex items-center justify-center mb-3">
                 <UploadCloud className="size-6" />
               </div>
               <h3 className="text-sm font-bold text-foreground">Sincronización Automática</h3>
@@ -145,9 +145,9 @@ export default function DocumentsPage() {
               </p>
             </div>
             
-            <div className="rounded-lg border border-border bg-card p-3 shadow-xs">
+            <div className="rounded-2xl bg-secondary/50 p-3.5">
               <div className="flex items-start gap-3">
-                <FileSpreadsheet className="size-4 text-ceibo mt-0.5" />
+                <FileSpreadsheet className="size-4 text-success mt-0.5" />
                 <div>
                   <h4 className="text-xs font-bold text-foreground">Catálogo Tabular</h4>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -156,7 +156,7 @@ export default function DocumentsPage() {
                   <a 
                     href="/plantilla_precios.xlsx" 
                     download
-                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md font-semibold transition-[background-color,border-color,color] duration-150 border border-border bg-card text-foreground hover:border-primary/35 hover:bg-secondary h-8 px-3 mt-2 w-full text-xs"
+                    className="inline-flex items-center justify-center whitespace-nowrap rounded-full font-semibold transition-colors bg-card text-info-strong ring-1 ring-border hover:bg-secondary h-8 px-3 mt-2 w-full text-xs"
                   >
                     <Download className="size-3.5 mr-1.5" /> Descargar Plantilla Estándar
                   </a>
@@ -180,7 +180,7 @@ export default function DocumentsPage() {
           </CardHeader>
           <CardContent>
             {documents.length === 0 ? (
-              <div className="text-center py-12 border border-dashed border-border rounded-lg">
+              <div className="text-center py-12 border border-dashed border-border rounded-2xl">
                 <FileText className="size-10 text-muted-foreground mx-auto mb-2 opacity-50" />
                 <p className="text-sm text-muted-foreground">No hay documentos cargados todavía.</p>
               </div>
