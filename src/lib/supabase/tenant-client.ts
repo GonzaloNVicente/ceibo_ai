@@ -11,6 +11,7 @@ import {
   UserTenantSession,
   ChatAnalytics,
   DashboardData,
+  DashboardOverview,
   SummaryMetrics,
   ChatAnalyticsRaw,
   ChatMessage,
@@ -24,6 +25,8 @@ import {
   localDateOf,
   normalizeDashboardData,
 } from '../dashboard-range';
+
+import { buildOverviewFromDailyRows, normalizeOverview } from '../dashboard-overview';
 
 // pedido y presupuesto son una sola categoria ('pedido_presupuesto' = filas viejas)
 const PEDIDO_QUERY_TYPES = ['pedido', 'pedido_presupuesto'];
@@ -144,6 +147,48 @@ export function createTenantScopedClient(supabaseClient: any): TenantAnalyticsCl
       }
 
       return normalizeDashboardData(data);
+    },
+
+    async getDashboardOverview(
+      range: { from: string; to: string },
+      granularity: 'day' | 'week' | 'month'
+    ): Promise<DashboardOverview> {
+      const session = await this.getSession();
+      if (!session || !session.perfil?.empresa_id) {
+        throw new Error('UNAUTHORIZED: No active tenant session');
+      }
+
+      this.empresaId = session.perfil.empresa_id;
+
+      // Modo demo: el cliente mock no tiene RPC, se arma el mismo resultado desde las filas diarias
+      if (typeof supabaseClient._getCurrentUser === 'function') {
+        const { data, error } = await supabaseClient
+          .from('chat_analytics_daily')
+          .select('*')
+          .eq('empresa_id', session.perfil.empresa_id);
+
+        if (error) {
+          throw new Error(error.message);
+        }
+        return buildOverviewFromDailyRows(
+          (data as ChatAnalytics[]) || [],
+          range,
+          granularity,
+          session.empresa?.timezone || undefined
+        );
+      }
+
+      const { data, error } = await supabaseClient.rpc('get_dashboard_overview', {
+        p_from: range.from,
+        p_to: range.to,
+        p_granularity: granularity,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return normalizeOverview(data);
     },
 
     async getEscalatedOrders(

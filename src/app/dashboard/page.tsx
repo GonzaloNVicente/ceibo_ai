@@ -1,48 +1,42 @@
 'use client';
 
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
-import { buttonVariants } from '@/components/ui/button';
-import { DerivedOrdersList } from '@/components/dashboard/derived-orders-list';
-import { PedidosCard } from '@/components/dashboard/pedidos-card';
+import { FocusTabs, PANEL_IDS, type DashTab } from '@/components/dashboard/focus-tabs';
+import { Icon } from '@/components/dashboard/icons';
+import { MoneyPanel, TimePanel } from '@/components/dashboard/panels';
 import { PeriodFilter } from '@/components/dashboard/period-filter';
-import { TimeSavedCard } from '@/components/dashboard/time-saved-card';
-import { ActivityChart, type ChartBar, type ChartChip } from '@/components/dashboard/activity-chart';
+import { EmptyState, ErrorAlert, PanelSkeleton, TilesSkeleton } from '@/components/dashboard/states';
+import { TilesRow, type DataState } from '@/components/dashboard/tiles-row';
 import { useAuth } from '@/contexts/auth-context';
 import { useBotActivity } from '@/hooks/use-bot-activity';
 import { createClient } from '@/lib/supabase/client';
 import { createTenantScopedClient } from '@/lib/supabase/tenant-client';
-import { ChatSession, DashboardData } from '@/lib/supabase/types';
-import { MOCK_TENANTS } from '@/lib/supabase/mock-data';
-import { formatCount, formatRelativeTime, formatTimeSaved } from '@/lib/format';
+import type { DashboardOverview } from '@/lib/supabase/types';
+import { formatRelativeTime } from '@/lib/format';
 import {
   DEFAULT_TIMEZONE,
-  EMPTY_SUMMARY_RAW,
-  addDays,
   autoGranularity,
   buildRangeQuery,
-  chartRangeFor,
-  chartTitle,
-  computeDelta,
-  formatBucketLabel,
-  formatBucketTooltip,
-  formatRangeLabel,
-  granularityNoun,
+  daysInRange,
   parseRangeParams,
-  presetShort,
-  presetTitle,
   resolveRange,
   sanitizeCustomRange,
   todayInTimezone,
-  toSummaryMetrics,
-  weekdayName,
   type DateRange,
   type Granularity,
   type RangePreset,
 } from '@/lib/dashboard-range';
-import { cn } from '@/lib/utils';
+import {
+  EMPTY_OVERVIEW_SUMMARY,
+  buildChartModel,
+  buildMoneyModel,
+  buildTiles,
+  buildTimeModel,
+  periodSuffix,
+  rangeLower,
+  tilesAriaLabel,
+} from '@/lib/dashboard-overview';
 
 const AUTO_REFRESH_MS = 60_000;
 const CLOCK_TICK_MS = 30_000;
@@ -63,17 +57,15 @@ function DashboardContent() {
   const { user, empresa, loading: authLoading } = useAuth();
   const { isOperative } = useBotActivity();
 
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [weekData, setWeekData] = useState<DashboardData | null>(null);
-  const [orders, setOrders] = useState<ChatSession[]>([]);
-  const [catalog, setCatalog] = useState<Record<string, string>>({});
+  const [overview, setOverview] = useState<DashboardOverview | null>(null);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [loadingData, setLoadingData] = useState(true); // Start loading immediately
   const [errorState, setErrorState] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   const [now, setNow] = useState<number>(() => Date.now());
   const requestId = useRef(0);
 
-  // --- Periodo elegido (vive en la URL: se puede compartir y sobrevive a recargar) ---
+  // --- Periodo y pestaña elegidos (viven en la URL: se pueden compartir y sobreviven a recargar) ---
   const timezone = empresa?.timezone || DEFAULT_TIMEZONE;
   const today = useMemo(() => todayInTimezone(timezone), [timezone]);
   const {
@@ -82,22 +74,32 @@ function DashboardContent() {
     granularity: manualGranularity,
   } = useMemo(() => parseRangeParams(searchParams, today), [searchParams, today]);
   const granularity: Granularity = manualGranularity ?? autoGranularity(range);
+  const tab: DashTab = searchParams.get('vista') === 'dinero' ? 'dinero' : 'tiempo';
+  const rangeKey = `${range.from}|${range.to}|${granularity}`;
 
   const updateUrl = useCallback(
-    (nextPreset: RangePreset, nextRange: DateRange) => {
-      router.replace(`/dashboard?${buildRangeQuery(nextPreset, nextRange, manualGranularity)}`, { scroll: false });
+    (nextPreset: RangePreset, nextRange: DateRange, nextTab: DashTab) => {
+      const query = buildRangeQuery(nextPreset, nextRange, manualGranularity);
+      router.replace(`/dashboard?${query}${nextTab === 'dinero' ? '&vista=dinero' : ''}`, { scroll: false });
     },
     [router, manualGranularity]
   );
 
   const handlePresetChange = (next: RangePreset) => {
-    updateUrl(next, next === 'custom' ? range : resolveRange(next, today));
+    updateUrl(next, next === 'custom' ? range : resolveRange(next, today), tab);
   };
-
   const handleCustomRangeChange = (next: DateRange) => {
     const valid = sanitizeCustomRange(next.from, next.to, today);
-    if (valid) updateUrl('custom', valid);
+    if (valid) updateUrl('custom', valid, tab);
   };
+  const handleTab = (next: DashTab) => updateUrl(preset, range, next);
+  // Sin datos: se sugiere un periodo MAS LARGO que el elegido (nunca el mismo)
+  const emptySuggestion =
+    preset === 'today' || preset === '7d'
+      ? { hint: 'Probá con 30 días.', label: 'Ver los últimos 30 días', next: '30d' as const }
+      : preset === '30d' || preset === 'this_month' || preset === 'last_month'
+      ? { hint: 'Probá con 90 días.', label: 'Ver los últimos 90 días', next: '90d' as const }
+      : null;
 
   // --- Carga de datos ---
   const loadDashboardData = useCallback(async () => {
@@ -106,37 +108,26 @@ function DashboardContent() {
     setErrorState(null);
     try {
       const tenantClient = createTenantScopedClient(createClient());
-      // Los graficos de 7 dias siempre terminan en el ultimo dia del periodo elegido
-      const weekRange: DateRange = { from: addDays(range.to, -6), to: range.to };
-      const weekIsMain = granularity === 'day' && range.from === weekRange.from;
-
-      const [main, week, escalated] = await Promise.all([
-        tenantClient.getDashboardMetrics(range, granularity),
-        weekIsMain ? Promise.resolve(null) : tenantClient.getDashboardMetrics(weekRange, 'day'),
-        tenantClient.getEscalatedOrders(range, timezone),
-      ]);
+      const result = await tenantClient.getDashboardOverview(range, granularity);
       if (thisRequest !== requestId.current) return; // llego una respuesta mas nueva
-
-      setData(main);
-      setWeekData(week ?? main);
-      setOrders(escalated);
+      setOverview(result);
+      setLoadedKey(`${range.from}|${range.to}|${granularity}`);
       setUpdatedAt(Date.now());
     } catch (err: any) {
       if (thisRequest !== requestId.current) return;
-      console.error('Error fetching dashboard analytics:', err);
+      console.error('Error fetching dashboard overview:', err);
       if (err?.message?.includes('UNAUTHORIZED')) {
         router.push('/login');
         return;
       }
-      // If it's a real database error, surface it instead of silently failing
-      setErrorState(err.message || 'Error desconocido al conectar con la base de datos.');
-      setData(null);
-      setWeekData(null);
-      setOrders([]);
+      // If it's a real database error, surface it instead of silently failing (ver CLAUDE.md, bug 5)
+      setErrorState(err?.message || 'Error desconocido al conectar con la base de datos.');
+      setOverview(null);
+      setLoadedKey(null);
     } finally {
       if (thisRequest === requestId.current) setLoadingData(false);
     }
-  }, [router, range, granularity, timezone]);
+  }, [router, range, granularity]);
 
   const loadRef = useRef(loadDashboardData);
   useEffect(() => {
@@ -152,21 +143,6 @@ function DashboardContent() {
       }
     }
   }, [authLoading, user, empresa?.id, loadDashboardData, router]);
-
-  // Catalogo (codigo -> nombre) para mostrar nombres de producto en la lista; mejor esfuerzo
-  useEffect(() => {
-    if (authLoading || !user) return;
-    let cancelled = false;
-    createTenantScopedClient(createClient())
-      .getProductCatalog()
-      .then((c) => {
-        if (!cancelled) setCatalog(c);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [authLoading, user, empresa?.id]);
 
   // Tiempo real: reloj de los "hace X min", refresco periodico y cambios en las conversaciones
   useEffect(() => {
@@ -200,186 +176,164 @@ function DashboardContent() {
     };
   }, [authLoading, user]);
 
-  // --- Datos derivados ---
-  const ready = data !== null;
-  const metrics = useMemo(() => toSummaryMetrics(data?.summary ?? EMPTY_SUMMARY_RAW), [data]);
-  const prevMetrics = useMemo(() => toSummaryMetrics(data?.previous.summary ?? EMPTY_SUMMARY_RAW), [data]);
+  // --- Estado de la pantalla ---
+  // "cargando" solo cuando todavia no hay datos de ESTE periodo (el refresco de fondo no parpadea)
+  const loading = loadingData && (overview === null || loadedKey !== rangeKey);
+  const summary = overview?.summary ?? EMPTY_OVERVIEW_SUMMARY;
+  const previous = overview?.previous.summary ?? EMPTY_OVERVIEW_SUMMARY;
+  const state: DataState = errorState ? 'error' : overview && overview.summary.total === 0 ? 'empty' : 'ok';
 
+  const tiles = useMemo(() => buildTiles(summary), [summary]);
+  const timeModel = useMemo(() => buildTimeModel(summary, previous), [summary, previous]);
+  const moneyModel = useMemo(() => buildMoneyModel(summary, previous), [summary, previous]);
+  const chartGranularity: Granularity = overview?.granularity ?? granularity;
+  const hoursChart = useMemo(
+    () => buildChartModel(overview?.buckets ?? [], 'hours', chartGranularity, range, today),
+    [overview, chartGranularity, range, today]
+  );
+  const moneyChart = useMemo(
+    () => buildChartModel(overview?.buckets ?? [], 'money', chartGranularity, range, today),
+    [overview, chartGranularity, range, today]
+  );
+
+  const periodChip =
+    preset === 'today' ? 'hoy' : preset === 'this_month' ? 'este mes' : preset === 'last_month' ? 'mes pasado' : `${daysInRange(range)} días`;
   const tenantName = empresa?.name || 'Ceibo AI Tech Solutions';
-  const tenantCode =
-    empresa?.id && empresa.id !== MOCK_TENANTS.TENANT_A.id
-      ? `CEI-${empresa.id.slice(0, 2).toUpperCase()}-${empresa.id.slice(-6).toUpperCase()}`
-      : 'CEI-AR-7F42A9';
+  const rel = updatedAt ? formatRelativeTime(new Date(updatedAt).toISOString(), now) : '';
+  const updatedText = loading
+    ? 'actualizando…'
+    : errorState
+    ? updatedAt
+      ? `última actualización ${rel}`
+      : 'sin datos'
+    : `actualizado ${rel || 'ahora'}`;
 
-  const periodPhrase = presetShort(preset);
-
-  // Comparacion con el periodo anterior: solo si hay algo con que comparar
-  const timeDelta = computeDelta(metrics.totalIA, prevMetrics.totalIA);
-  const comparison =
-    timeDelta.kind === 'up'
-      ? `▲ ${timeDelta.pct}% vs. período anterior`
-      : timeDelta.kind === 'down'
-      ? `▼ ${timeDelta.pct}% vs. período anterior`
-      : null;
-
-  const weekBuckets = weekData?.buckets ?? [];
-  const weekBars = weekBuckets.map((b, i) => ({
-    label: weekdayName(b.date, 'short'),
-    value: b.resueltas_ia,
-    highlight: i === weekBuckets.length - 1,
-  }));
-  const weekAiTotal = weekBuckets.reduce((acc, b) => acc + b.resueltas_ia, 0);
-
-  // El grafico grande sigue el periodo elegido y su agrupacion (dia / semana / mes).
-  // "Hoy" es un solo dia: se muestran los 7 dias que terminan hoy.
-  const chartSource = preset === 'today' ? weekData : data;
-  const chartBuckets = chartSource?.buckets ?? [];
-  const chartGranularity: Granularity = chartSource?.granularity ?? 'day';
-  const chartBars: ChartBar[] = chartBuckets.map((b, i) => {
-    const isLast = i === chartBuckets.length - 1;
-    let label: string;
-    if (chartGranularity === 'day' && b.date === today) {
-      label = 'Hoy';
-    } else if (chartGranularity === 'day' && chartBuckets.length <= 8) {
-      label = `${weekdayName(b.date, 'long')} ${Number(b.date.slice(8, 10))}`;
-    } else {
-      label = formatBucketLabel(b.date, chartGranularity);
-    }
-    return {
-      label,
-      tooltipTitle: formatBucketTooltip(b.date, chartGranularity),
-      ai: b.resueltas_ia,
-      human: b.derivadas_humano,
-      isLast,
+  // Descargar informe = imprimir (la hoja incluye las dos vistas y "Guardar como PDF")
+  const handleDownload = () => {
+    const previousTitle = document.title;
+    document.title = `Informe Ceibo AI · ${rangeLower(range)}`;
+    const restore = () => {
+      document.title = previousTitle;
+      window.removeEventListener('afterprint', restore);
     };
-  });
-  const activityTitle = chartTitle(preset, range);
-  const activityCaption = `${formatRangeLabel(chartRangeFor(preset, range))} · ${granularityNoun(chartGranularity)}`;
-
-  const chips: ChartChip[] = [
-    {
-      text: `${formatCount(metrics.totalConsultas)} ${metrics.totalConsultas === 1 ? 'consulta' : 'consultas'} ${periodPhrase}`,
-      tone: 'neutral',
-    },
-    { text: `${metrics.tasaResolucionIA}% resueltas por la IA`, tone: 'info' }, // azul, igual que la serie del grafico
-    {
-      text: `${formatCount(metrics.reclamosCount)} ${metrics.reclamosCount === 1 ? 'reclamo' : 'reclamos'}`,
-      tone: 'brand', // terracota, pedido del dueño
-    },
-  ];
-
-  const unassigned = orders.filter((o) => !o.assigned_to).length;
-  const withSeller = orders.length - unassigned;
-  // Valor de los pedidos que hoy estan "listos para cerrar" (ultimo monto estimado de cada cliente)
-  const estimatedValue = orders.reduce((acc, o) => acc + (Number(o.estimated_amount) || 0), 0);
-  const ordersTitle = preset === 'today' ? 'Pedidos derivados hoy' : `Pedidos derivados · ${presetTitle(preset, range)}`;
+    window.addEventListener('afterprint', restore);
+    window.print();
+  };
 
   return (
-    <div className="flex min-h-[calc(100vh-9.5rem)] flex-col gap-5">
+    <div className="cb-dash">
       {errorState && (
-        <div className="rounded-md bg-destructive/15 p-4 text-destructive border border-destructive/30 shadow-sm">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="size-5" />
-            <h3 className="font-semibold text-lg">Error de Conexión a Base de Datos</h3>
-          </div>
-          <p className="mt-1 text-sm">{errorState}</p>
-        </div>
+        <ErrorAlert
+          message="No pudimos conectarnos con Ceibo."
+          detail={process.env.NODE_ENV !== 'production' ? errorState : null}
+          onRetry={loadDashboardData}
+        />
       )}
 
-      {/* Encabezado compacto */}
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0">
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-            <span className="font-semibold">{tenantName}</span>
-            <span aria-hidden="true">·</span>
-            <span
-              className={cn(
-                'inline-flex items-center gap-1.5 font-semibold',
-                isOperative ? 'text-success' : 'text-muted-foreground'
-              )}
-            >
-              <span
-                className={cn('size-2 rounded-full', isOperative ? 'live-pulse bg-success' : 'bg-muted-foreground/50')}
-                aria-hidden="true"
-              />
-              {isOperative ? 'Asistente activo' : 'Asistente sin actividad reciente'}
+      <div className="cb-context">
+        <p className="cb-ctx-line">
+          <strong>{tenantName}</strong>
+          <span aria-hidden="true">·</span>
+          {errorState ? (
+            <span className="cb-status is-bad">
+              <i aria-hidden="true" />
+              Sin conexión
             </span>
-            <span aria-hidden="true">·</span>
-            <button
-              type="button"
-              onClick={loadDashboardData}
-              disabled={loadingData}
-              aria-label="Actualizar datos"
-              title="Actualizar datos"
-              className={cn(
-                'inline-flex items-center gap-1 rounded hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-70',
-                errorState && 'font-semibold text-negative hover:text-negative'
-              )}
-            >
-              <RefreshCw className={cn('size-3', loadingData && 'animate-spin')} aria-hidden="true" />
-              {errorState
-                ? 'error de conexión'
-                : updatedAt
-                ? `actualizado ${formatRelativeTime(new Date(updatedAt).toISOString(), now)}`
-                : 'actualizando...'}
-            </button>
-            <span
-              className="inline-flex text-muted-foreground/70"
-              title={`Datos aislados para la empresa [${tenantCode}]`}
-            >
-              <ShieldCheck className="size-3.5" aria-label={`Datos aislados para la empresa ${tenantCode}`} />
+          ) : isOperative ? (
+            <span className="cb-status is-ok">
+              <i aria-hidden="true" />
+              Asistente activo
             </span>
-          </p>
-          <h1 className="mt-1 font-display text-[28px] font-bold leading-tight">Rendimiento de tu asistente</h1>
-        </div>
+          ) : (
+            <span className="cb-status is-idle">
+              <i aria-hidden="true" />
+              Sin actividad reciente
+            </span>
+          )}
+          <span aria-hidden="true">·</span>
+          <span>{updatedText}</span>
+        </p>
+        <PeriodFilter
+          preset={preset}
+          range={range}
+          today={today}
+          onPresetChange={handlePresetChange}
+          onCustomRangeChange={handleCustomRangeChange}
+        />
+      </div>
 
-        <div className="flex flex-wrap items-start justify-end gap-3">
-          <PeriodFilter
-            preset={preset}
-            range={range}
-            today={today}
-            onPresetChange={handlePresetChange}
-            onCustomRangeChange={handleCustomRangeChange}
+      {loading ? (
+        <TilesSkeleton />
+      ) : (
+        <TilesRow
+          title={`Qué hizo Ceibo con cada consulta · ${periodSuffix(preset, range)}`}
+          tiles={tiles}
+          state={state}
+          periodChip={periodChip}
+          segLabel={tilesAriaLabel(summary)}
+        />
+      )}
+
+      <FocusTabs tab={tab} onTab={handleTab} loading={loading} state={state} time={timeModel} money={moneyModel} />
+
+      <div aria-hidden="true" className="cb-sec is-gap">
+        <span className="t">{state === 'empty' ? 'Detalle' : tab === 'tiempo' ? 'Detalle de tiempo' : 'Detalle de dinero'}</span>
+        <i />
+      </div>
+
+      {loading ? (
+        <PanelSkeleton />
+      ) : state === 'empty' ? (
+        <EmptyState
+          suggestion={
+            emptySuggestion
+              ? {
+                  hint: emptySuggestion.hint,
+                  label: emptySuggestion.label,
+                  onSelect: () => updateUrl(emptySuggestion.next, resolveRange(emptySuggestion.next, today), tab),
+                }
+              : null
+          }
+        />
+      ) : (
+        <>
+          <TimePanel
+            id={PANEL_IDS.tiempo}
+            labelledBy="cb-tab-tiempo"
+            hidden={tab !== 'tiempo'}
+            state={state}
+            model={timeModel}
+            chart={hoursChart}
+            granularity={chartGranularity}
           />
-          <Link href="/documents" className={buttonVariants({ variant: 'primary' })}>
-            <Sparkles className="size-4" aria-hidden="true" />
-            Entrenar asistente
-          </Link>
-        </div>
-      </header>
+          <MoneyPanel
+            id={PANEL_IDS.dinero}
+            labelledBy="cb-tab-dinero"
+            hidden={tab !== 'dinero'}
+            state={state}
+            model={moneyModel}
+            chart={moneyChart}
+            granularity={chartGranularity}
+          />
+        </>
+      )}
 
-      {/* Dos protagonistas */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        <TimeSavedCard
-          ready={ready}
-          time={formatTimeSaved(metrics.totalIA)}
-          periodPhrase={periodPhrase}
-          resolvedCount={metrics.totalIA}
-          comparison={comparison}
-          weekTotal={formatTimeSaved(weekAiTotal)}
-          weekBars={weekBars}
-        />
-        <PedidosCard
-          ready={ready}
-          total={orders.length}
-          unassigned={unassigned}
-          withSeller={withSeller}
-          estimatedValue={estimatedValue}
-          reclamos={metrics.reclamosCount}
-        />
-      </div>
-
-      {/* Fila inferior: ocupa el resto de la pantalla */}
-      <div className="grid flex-1 gap-5 lg:grid-cols-[1.65fr_1fr]">
-        <ActivityChart
-          title={activityTitle}
-          caption={activityCaption}
-          ready={ready}
-          bars={chartBars}
-          chips={chips}
-        />
-        <DerivedOrdersList title={ordersTitle} ready={ready} orders={orders} catalog={catalog} now={now} />
-      </div>
+      <footer className="cb-foot">
+        <p>
+          <b>Cómo calculamos estos números.</b> Tiempo: 12 minutos por cada consulta que Ceibo resuelve sola. Dinero:
+          el último monto estimado de cada cliente (cantidad pedida × precio de tu catálogo). Una consulta es un
+          mensaje de un cliente que Ceibo respondió.
+        </p>
+        <button
+          type="button"
+          className="cb-btn cb-download cb-noprint"
+          disabled={loading || state !== 'ok'}
+          onClick={handleDownload}
+        >
+          <Icon name="download" size={16} stroke={2.1} />
+          Descargar informe
+        </button>
+      </footer>
     </div>
   );
 }

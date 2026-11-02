@@ -140,6 +140,45 @@ export interface DashboardData {
   previous: { from: string; to: string; summary: DashboardSummaryRaw };
 }
 
+/** Resumen de un periodo para el dashboard nuevo (get_dashboard_overview). Unidad: consultas. */
+export interface OverviewSummary {
+  total: number;
+  resueltas: number; // resueltas solo por Ceibo (sin intervencion humana, sin contar "sin valor")
+  ventas: number; // pedidos / presupuestos derivados
+  reclamos: number;
+  sin_datos: number; // derivadas a un humano porque el bot no tenia informacion
+  sin_valor: number; // spam, numero equivocado, mensajes sin contenido
+  derivadas: number; // ventas + reclamos + sin_datos: lo que llega al equipo
+  resueltas_detalle: { precios: number; stock: number; horarios: number; envios: number; pagos: number; otras: number };
+  sin_valor_detalle: { spam: number; numero_equivocado: number; sin_contenido: number };
+  ventas_valor: number; // ultimo monto estimado de cada cliente con pedido
+  ventas_clientes_con_monto: number;
+  ventas_con_vendedor_n: number;
+  ventas_con_vendedor_valor: number;
+  ventas_sin_asignar_n: number;
+  ventas_sin_asignar_valor: number;
+  respuesta_mediana_seg: number | null; // velocidad de respuesta real del bot
+  respuesta_n: number;
+}
+
+export interface OverviewBucket {
+  date: string; // YYYY-MM-DD (primer dia del bucket)
+  total: number;
+  resueltas: number;
+  derivadas: number;
+  valor: number;
+}
+
+export interface DashboardOverview {
+  timezone: string;
+  from: string;
+  to: string;
+  granularity: 'day' | 'week' | 'month';
+  buckets: OverviewBucket[];
+  summary: OverviewSummary;
+  previous: { from: string; to: string; summary: OverviewSummary };
+}
+
 export interface ChartDataPoint {
   date: string; // 'YYYY-MM-DD'
   displayDate: string; // e.g. '10 Sep'
@@ -168,6 +207,10 @@ export interface TenantAnalyticsClient {
     range: { from: string; to: string },
     granularity: 'day' | 'week' | 'month'
   ): Promise<DashboardData>;
+  getDashboardOverview(
+    range: { from: string; to: string },
+    granularity: 'day' | 'week' | 'month'
+  ): Promise<DashboardOverview>;
   /** Sesiones de pedido/presupuesto derivadas a un vendedor y con actividad dentro del rango */
   getEscalatedOrders(range: { from: string; to: string }, timezone?: string): Promise<ChatSession[]>;
   /** Codigo de producto -> nombre, del catalogo de la empresa (mejor esfuerzo: {} si falla) */
