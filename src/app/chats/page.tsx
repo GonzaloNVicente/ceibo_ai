@@ -19,8 +19,11 @@ import {
   Clock,
   Sparkles,
   ShieldCheck,
+  AlertCircle,
 } from 'lucide-react';
 import { useToast } from '@/contexts/toast-context';
+
+const UNSENT_STORAGE_KEY = 'ceibo.chats.unsent';
 
 export default function ChatsPage() {
   const { user, perfil } = useAuth();
@@ -37,6 +40,9 @@ export default function ChatsPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [newMessage, setNewMessage] = useState('');
+  // Mensajes del vendedor que se guardaron pero WhatsApp no pudo entregar (id -> true). Se recuerdan en el navegador.
+  const [unsent, setUnsent] = useState<Record<string, true>>({});
+  const [retryingId, setRetryingId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadSessions() {
@@ -119,6 +125,43 @@ export default function ChatsPage() {
     };
   }, [user]);
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(UNSENT_STORAGE_KEY);
+      if (raw) setUnsent(JSON.parse(raw));
+    } catch {
+      /* sin almacenamiento: no se recuerdan */
+    }
+  }, []);
+
+  const updateUnsent = (id: string, isUnsent: boolean) => {
+    setUnsent(prev => {
+      const next = { ...prev };
+      if (isUnsent) next[id] = true;
+      else delete next[id];
+      try {
+        localStorage.setItem(UNSENT_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* ignorar */
+      }
+      return next;
+    });
+  };
+
+  // Reenvío del mensaje al webhook real de WhatsApp. true = salió.
+  const deliverToWhatsApp = async (phone: string, text: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/send-whatsapp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, text })
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  };
+
   const selectedLead = leads.find(l => l.id === selectedSessionId);
 
   const filteredLeads = useMemo(() => {
@@ -150,19 +193,27 @@ export default function ChatsPage() {
         bot_paused: true
       } : l));
 
-      // Reenvío del mensaje al webhook real de WhatsApp
-      const wpResponse = await fetch('/api/send-whatsapp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: selectedLead.customer_phone, text })
-      });
-
-      if (!wpResponse.ok) {
-        toast.error('El mensaje se guardó pero no se pudo enviar por WhatsApp — reintentá');
+      const delivered = await deliverToWhatsApp(selectedLead.customer_phone, text);
+      if (!delivered) {
+        updateUnsent(newMsg.id, true);
+        toast.error('El mensaje no se pudo enviar por WhatsApp. Quedó marcado en la conversación: podés reintentar.');
       }
     } catch (err: any) {
       console.error(err);
       toast.error('Error enviando mensaje: ' + err.message);
+    }
+  };
+
+  const handleRetry = async (msg: ChatMessage) => {
+    if (!selectedLead) return;
+    setRetryingId(msg.id);
+    const delivered = await deliverToWhatsApp(selectedLead.customer_phone, msg.message_text);
+    setRetryingId(null);
+    if (delivered) {
+      updateUnsent(msg.id, false);
+      toast.success('Mensaje enviado por WhatsApp');
+    } else {
+      toast.error('Sigue sin poder enviarse por WhatsApp. Probá de nuevo en un rato.');
     }
   };
 
@@ -400,6 +451,21 @@ export default function ChatsPage() {
                               <span className="text-[10px] text-primary-foreground/70 mt-1.5 block text-right">
                                 {new Date(msg.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                               </span>
+                            </div>
+                          )}
+
+                          {isAgent && unsent[msg.id] && (
+                            <div className="mt-1 flex items-center gap-2 text-[11px] font-semibold text-negative">
+                              <AlertCircle className="size-3.5" />
+                              No se envió por WhatsApp
+                              <button
+                                type="button"
+                                onClick={() => handleRetry(msg)}
+                                disabled={retryingId === msg.id}
+                                className="rounded-full bg-negative/10 px-2.5 py-0.5 hover:bg-negative/20 disabled:opacity-60"
+                              >
+                                {retryingId === msg.id ? 'Reenviando...' : 'Reintentar'}
+                              </button>
                             </div>
                           )}
                         </div>
